@@ -338,3 +338,7 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+
+/AmqTool/TestingOutPath
+/AmqTool/private_config.json
