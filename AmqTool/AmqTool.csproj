@@ -14,6 +14,8 @@
     <WarningLevel>4</WarningLevel>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -24,6 +26,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -34,9 +37,45 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>music-circle %281%29.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.WindowsAPICodePack, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.WindowsAPICodePack-Core.1.1.0.2\lib\Microsoft.WindowsAPICodePack.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAPICodePack.Shell, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.WindowsAPICodePack-Shell.1.1.0.0\lib\Microsoft.WindowsAPICodePack.Shell.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAPICodePack.ShellExtensions, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.WindowsAPICodePack-Shell.1.1.0.0\lib\Microsoft.WindowsAPICodePack.ShellExtensions.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -49,12 +88,35 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Classes\AmqJob.cs" />
+    <Compile Include="Classes\MyLocker.cs" />
+    <Compile Include="Classes\VolumeJob.cs" />
+    <Compile Include="IInputStream.cs" />
+    <Compile Include="UserControls\VolumeJobs.xaml.cs">
+      <DependentUpon>VolumeJobs.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Windows\About.xaml.cs">
+      <DependentUpon>About.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Windows\ConfigSetup.xaml.cs">
+      <DependentUpon>ConfigSetup.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Windows\editffmpegstuff.xaml.cs">
+      <DependentUpon>editffmpegstuff.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Windows\KeybindSettings.xaml.cs">
+      <DependentUpon>KeybindSettings.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Windows\MultiInputWindow.xaml.cs">
+      <DependentUpon>MultiInputWindow.xaml</DependentUpon>
+    </Compile>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -63,10 +125,35 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Classes\Config.cs" />
+    <Compile Include="Classes\State.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
-      <SubType>Code</SubType>
     </Compile>
+    <Page Include="UserControls\VolumeJobs.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Windows\About.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Windows\ConfigSetup.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Windows\editffmpegstuff.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Windows\KeybindSettings.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Windows\MultiInputWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -86,6 +173,23 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="config.template">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="jobs.json" />
+    <None Include="lib\ytdl_hook.lua">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="packages.config" />
+    <None Include="private_config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="private_config.template">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -95,10 +199,57 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Assets\" />
-    <Folder Include="Classes\" />
+    <Folder Include="Data\" />
+    <Folder Include="DefaultOut\" />
     <Folder Include="Scripts\" />
     <Folder Include="Tmp\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Icons\checkmark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Icons\pencil.png" />
+    <Resource Include="Assets\Icons\close.png" />
+    <Resource Include="Assets\Icons\elevation-rise.png" />
+    <Resource Include="Assets\Icons\eye.png" />
+    <Resource Include="Assets\Icons\play-box.png" />
+    <Resource Include="Assets\Icons\trash.png" />
+    <Resource Include="Assets\Icons\volume-source.png" />
+    <Resource Include="Assets\Icons\upload.png" />
+    <Resource Include="Assets\Icons\file-cloud-outline.png" />
+    <Resource Include="Assets\Icons\pencil-box-multiple-outline.png" />
+    <Resource Include="Assets\Icons\content-copy.png" />
+    <Resource Include="Assets\Icons\content-copy3.png" />
+    <Resource Include="Assets\Icons\content-copy4.png" />
+    <Resource Include="Assets\Icons\content-copy7.png" />
+    <Resource Include="Assets\Icons\backspace.png" />
+    <Resource Include="Assets\Icons\folder-open.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Mpv.Net.Wpf\Mpv.Net.Wpf.csproj">
+      <Project>{31b8702c-8e7f-4e26-a78e-10a33d211db6}</Project>
+      <Name>Mpv.Net.Wpf</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="music-circle %281%29.ico" />
+    <Resource Include="music-circle.ico" />
+    <Resource Include="Assets\Icons\content-duplicate.png" />
+    <Resource Include="Assets\HomeBackgrounds\defaultBG.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Icons\progress-upload.png" />
+    <Resource Include="Assets\Icons\volume-check.png" />
+    <Resource Include="Assets\Icons\help-circle-outline.png" />
+    <Resource Include="Assets\Icons\plus-box.png" />
+    <Resource Include="Assets\Icons\plus-thick.png" />
+    <Resource Include="Assets\Icons\cloud-download.png" />
+    <Resource Include="Assets\Icons\note-text-outline.png" />
+    <Resource Include="Assets\Icons\eye-check.png" />
+    <Resource Include="Assets\Icons\clipboard-arrow-right.png" />
+    <Content Include="lib\mpv-1.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

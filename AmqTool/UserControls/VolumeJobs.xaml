@@ -1,0 +1,98 @@
+﻿<UserControl x:Class="AmqTool.UserControls.VolumeJobs"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:AmqTool.UserControls"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="250">
+    <Grid Background="#1e1e1e" Name="MainGrid">
+        <StackPanel VerticalAlignment="Top">
+            <StackPanel Margin="7 7 0 0" Orientation="Horizontal">
+                <TextBox Name="Tbx" LostFocus="Tbx_LostFocus" GotFocus="Tbx_GotFocus" Style="{StaticResource Tbx_Edi4}" MinWidth="200px" MaxWidth="200px" Text="" ToolTip="todo"/>
+                <Button IsDefault="{Binding ElementName=Tbx, Path=IsFocused}" Name="AddBTN" Click="AddBTN_Click" Style="{DynamicResource JobsBTN_Plus}" Margin="5 0 0 0" />
+                <Button IsDefault="{Binding ElementName=DlTbx, Path=IsFocused}" Name="AddBTN2_LateNightCodingPog" Visibility="Visible" Width="0" Height="0" Click="AddBTN_Click" Style="{DynamicResource JobsBTN_Plus}" Margin="0" />
+            </StackPanel>
+            <StackPanel Margin="7 0 0 0" Orientation="Horizontal">
+                <Button Click="FromFolder_Click" ToolTip="Test local files, may also select multiple in the open file dialogue" Name="FromFolder" Style="{StaticResource JobsBTN_OpenFolderPlus}" Margin="0 5 0 0" />
+                <TextBlock Margin="5 4 0 0" Text="Load" Style="{StaticResource ConfigSetupWindow_WarnTXT}"/>
+                <CheckBox Name="Chkbox" Checked="Chk_Checked" Unchecked="Chk_Unchecked" Style="{StaticResource CheckboxJobs}" Margin="10 4 0 0" />
+                <TextBox GotFocus="Tbx2_GotFocus" LostFocus="Tbx2_LostFocus" x:Name="DlTbx" Text="" Style="{StaticResource Tbx_OutFile}" Margin="3 3 0 0" IsEnabled="{Binding ElementName=Chkbox, Path=IsChecked}"/>
+            </StackPanel>
+            <Separator Margin="0 7 0 0"/>
+
+            <!--BUILDING BLOCKS-->
+            <ListBox Visibility="Collapsed" Style="{StaticResource ListBoxJobs}">
+                <!--just here for style building-->
+                <StackPanel>
+                    <StackPanel>
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock HorizontalAlignment="Left" Text="Sum title" ToolTip="SameAsTxtTODO" Style="{StaticResource JobName}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox MinWidth="200px" MaxWidth="200px" HorizontalAlignment="Left" Text="outFileNameHere" ToolTip="ASDF" Style="{StaticResource Tbx_OutFile}" IsReadOnly="True"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                            <Button ToolTip="Start upload to catbox (or copy uploaded link to clipboard)" Style="{DynamicResource JobsBTN_Upload}" IsEnabled="True" Opacity="1" Margin="0 0 0 0"/>
+                            <Button ToolTip="Remove this from the list" Style="{StaticResource JobsBTN_Cancel}" Margin="5 0 0 0" IsEnabled="True"/>
+                            <Button ToolTip="Preview the video result (this will prioritize the newest edited volume file if a volume edit has been executed)" Style="{StaticResource JobsBTN_CheckVideo}" IsEnabled="True" Opacity="1" Margin="5 0 0 0"/>
+                            <Button ToolTip="Check detailed info" Style="{StaticResource JobsBTN_CheckDetailedInfo}" IsEnabled="True" Opacity="1" Margin="5 0 0 0"/>
+                            <Button ToolTip="Check the volume again" Style="{StaticResource JobsBTN_VolumeCheck_Before}" IsEnabled="True" Opacity="1" Margin="5 0 0 0"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" >
+                            <Button ToolTip="Click to execute volume edit on the file." Style="{StaticResource JobsBTN_VolumeEdit}" Margin="0 5 6 0" IsEnabled="False" Opacity="0.2"/>
+                            <Slider Style="{StaticResource VolumeEditSlider}" ValueChanged="Slider_ValueChanged" Minimum="-20" Maximum="20" IsSnapToTickEnabled="True" TickFrequency="0.5" Value="0" IsEnabled="True"/>
+                            <TextBlock Opacity="0.7" Margin="3 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FF45ADF5" Text="+5.5dB" Width="31px" Style="{StaticResource JobName}" FontSize="9px"/>
+                            <TextBlock Margin="9 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FFE4DDDD" Text="(Max | Mean)" ToolTip="(Max dB | Mean dB)" Style="{StaticResource JobNameMM}"/>
+                        </StackPanel>
+                        <DockPanel >
+                            <TextBlock Margin="0 3 0 0" FontSize="10px" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#CCC" Opacity="0.7" Text="V: 12000 [29.97] (VP9) | A: 329.392 (opus)" ToolTip="Video bitrate in kb/s [fps] (Venc) | Audio encoder settings bitrate in kbits/s (Aenc)" Style="{StaticResource Bitrates}"/>
+                        </DockPanel>
+                    </StackPanel>
+                    <Separator Opacity="0.5" Margin="0 4 0 0"/>
+                    <Label Visibility="Collapsed" Content="{Binding Id}"/>
+                </StackPanel>
+            </ListBox>
+
+            <!--VOLUME JOBS-->
+            <ListBox Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" MaxHeight="650px" VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="VolumeJobsLV" ItemsSource="{Binding VolumeJobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <StackPanel>
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock HorizontalAlignment="Left" Text="{Binding Title}" ToolTip="{Binding Title_for_tooltip}" Style="{StaticResource JobName}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBox MinWidth="200px" MaxWidth="200px" HorizontalAlignment="Left" Text="{Binding Title_for_tooltip}" Style="{StaticResource Tbx_OutFile}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                                    <Button Loaded="UPLButton_Loaded" Click="JobsBTN_Upload_Click" ToolTip="Start upload to catbox (or copy uploaded link to clipboard)" Style="{DynamicResource JobsBTN_Upload}" IsEnabled="{Binding __UploadToCatboxAllBTN}" Margin="0 0 0 0"/>
+                                    <Button PreviewMouseDown="JobsBTN_Cancel_MouseDown" ToolTip="Remove this from the list" Style="{StaticResource JobsBTN_Cancel}" Margin="5 0 0 0" IsEnabled="{Binding __IsRegularJob}"/>
+                                    <Button Click="JobsBTN_CheckVideo_Click" ToolTip="Preview the video result (this will prioritize the newest edited volume file if a volume edit has been executed)" Style="{StaticResource JobsBTN_CheckVideo}" IsEnabled="{Binding __IsRegularJob}" Margin="5 0 0 0"/>
+                                    <Button Click="JobsBTN_CheckVideo_Click2" ToolTip="This will always only check the original video" Style="{StaticResource JobsBTN_CheckVideoOriginal}" IsEnabled="{Binding __IsRegularJob}" Margin="5 0 0 0"/>
+                                    <Button Click="JobsBTN_ShowDetailedInfo" ToolTip="Check detailed info" Style="{StaticResource JobsBTN_CheckDetailedInfo}" IsEnabled="{Binding __IsRegularJob}" Margin="5 0 0 0"/>
+                                    <Button Click="JobsBTN_MakeNewDetailedInfo" ToolTip="Check the volume again (this will update the detailed info with the newest edited volume file if a volume edit has been executed)" Style="{StaticResource JobsBTN_VolumeCheck_Before}" IsEnabled="{Binding __IsDownloaded}" Margin="5 0 0 0"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" >
+                                    <Button Click="JobsBTN_VolumeEdit_Click" ToolTip="Click to execute volume edit on the file." Style="{StaticResource JobsBTN_VolumeEdit}" Margin="0 5 6 0" IsEnabled="{Binding __IsDownloaded}"/>
+                                    <Slider Style="{StaticResource VolumeEditSlider}" ValueChanged="Slider_ValueChanged" Minimum="-20" Maximum="20" IsSnapToTickEnabled="True" TickFrequency="0.5" Value="{Binding VolumeChangeValue}" IsEnabled="{Binding __IsDownloaded}"/>
+                                    <TextBlock Loaded="TextBlockSLID_Loaded" Opacity="0.7" Margin="3 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FF45ADF5" Text="+0dB" Width="31px" Style="{StaticResource JobName}" FontSize="9px"/>
+                                    <TextBlock Margin="9 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FFE4DDDD" Text="{Binding MaxVolume_meanVolume}" ToolTip="(Max dB | Mean dB)" Style="{StaticResource JobNameMM}"/>
+                                </StackPanel>
+                                <DockPanel>
+                                    <TextBlock Margin="0 3 0 0" FontSize="10px" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#CCC" Opacity="0.7" Text="{Binding MediaInfo}" ToolTip="Video bitrate in kb/s [fps] (Venc) | Audio encoder settings bitrate in kbits/s (Aenc)" Style="{StaticResource Bitrates}"/>
+                                </DockPanel>
+                            </StackPanel>
+                            <Separator Opacity="0.5" Margin="0 4 0 0"/>
+                            <Label Visibility="Collapsed" Content="{Binding Id}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+
+        </StackPanel>
+
+    </Grid>
+</UserControl>

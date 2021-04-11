@@ -1,0 +1,258 @@
+{
+  "windowProps": {
+    "fullscreen": false,
+    "x": 1480,
+    "y": 994,
+    "top": 298,
+    "left": 522,
+    "last_started": "-1",
+    "_Dont_clear_textboxes": false,
+    "Use_2_Pass_Encoding": false
+  },
+  "folders": {
+    "last_folder_picker_path": "",
+    "from_vegas_flac_path": "From Vegas audio path",
+    "into_vegas_mp4_path": "Mp4 save location for Vegas",
+    "default_out_path": "Default output path",
+    "volume_checker_path": "Download location for vol. checking",
+    "tmp_path": "Default tmp path",
+    "bgs_path": "Home bg storage path"
+  },
+  "keybindings": {
+    "Global Keybinds": [
+      {
+        "actionName": "Keybind settings",
+        "key": "S",
+        "mods": "011",
+        "ModsReadable": "Ctrl Alt "
+      },
+      {
+        "actionName": "Toggle text box focus clear",
+        "key": "D",
+        "mods": "011",
+        "ModsReadable": "Ctrl Alt "
+      },
+      {
+        "actionName": "Toggle fullscreen",
+        "key": "F11",
+        "mods": "000",
+        "ModsReadable": "None"
+      },
+      {
+        "actionName": "Play previous file",
+        "key": "Next",
+        "mods": "000",
+        "ModsReadable": "None"
+      },
+      {
+        "actionName": "Play next file",
+        "key": "PageUp",
+        "mods": "000",
+        "ModsReadable": "None"
+      },
+      {
+        "actionName": "Set left timestamp marker",
+        "key": "F1",
+        "mods": "000",
+        "ModsReadable": "None"
+      },
+      {
+        "actionName": "Set right timestamp marker",
+        "key": "F2",
+        "mods": "000",
+        "ModsReadable": "None"
+      },
+      {
+        "actionName": "Go back one frame",
+        "key": "Left",
+        "mods": "010",
+        "ModsReadable": "Ctrl "
+      },
+      {
+        "actionName": "Go forward one frame",
+        "key": "Right",
+        "mods": "010",
+        "ModsReadable": "Ctrl "
+      },
+      {
+        "actionName": "Go back one second",
+        "key": "Left",
+        "mods": "100",
+        "ModsReadable": "Shift "
+      },
+      {
+        "actionName": "Go forward one second",
+        "key": "Right",
+        "mods": "100",
+        "ModsReadable": "Shift "
+      },
+      {
+        "actionName": "Go back five seconds",
+        "key": "Left",
+        "mods": "000",
+        "ModsReadable": "None"
+      },
+      {
+        "actionName": "Go forward five seconds",
+        "key": "Right",
+        "mods": "000",
+        "ModsReadable": "None"
+      },
+      {
+        "actionName": "Pause or play",
+        "key": "Space",
+        "mods": "100",
+        "ModsReadable": "Shift "
+      }
+    ],
+    "Home Mode": null,
+    "Organizing Mode": null,
+    "Organizing Mode Dynamic": null,
+    "Edit Mode": null,
+    "Advanced Mode": null
+  },
+  "execs": [
+    {
+      "name": "ffmpeg",
+      "path": "C:/ffmpeg/bin/ffmpeg.exe"
+    },
+    {
+      "name": "python",
+      "path": "not_user_currently"
+    },
+    {
+      "name": "powershell",
+      "path": "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+    }
+  ],
+  "extensions": [
+    {
+      "id": 0,
+      "name": "Volume checking",
+      "author": "Kiki",
+      "version": "0.1",
+      "loc": "",
+      "exec": "ffmpeg",
+      "usage": [
+        {
+          "call": "-hide_banner -i \"[:in]\" -map a:0 -af \"volumedetect\" -vn -sn -dn -f null /dev/null",
+          "description": "Simple volume detect [Don't edit]"
+        },
+        {
+          "call": "-hide_banner -i \"[:in]\" -map a:0 -af volumedetect,silencedetect=d=0.1:n=-50dB -f null -",
+          "description": "Volume+silence detect [Don't edit]"
+        },
+        {
+          "call": "-hide_banner -i \"[:in]\" -vn -c copy \"[:out]\" -y",
+          "description": "Helper for figuring out which opus bitrate was used [Don't edit]"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "Making temporary mp4s",
+      "author": "Kiki",
+      "version": "0.1",
+      "loc": "",
+      "exec": "ffmpeg",
+      "usage": [
+        {
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -c copy -avoid_negative_ts make_zero -map 0:a:[:aid] -strict experimental -map v \"[:out]\" -y",
+          "description": "Temp mp4 (with ss and to)"
+        },
+        {
+          "call": "-hide_banner -ss [:ss] -t [:t] -i \"[:in]\" -c copy -avoid_negative_ts make_zero -map 0:a:[:aid] -strict experimental -map v \"[:out]\" -y",
+          "description": "Temp mp4 (with ss and t)"
+        },
+        {
+          "call": "-hide_banner -ss [:ss] -i \"[:in]\" -c copy -avoid_negative_ts make_zero -map 0:a:[:aid] -strict experimental -map v \"[:out]\" -y",
+          "description": "Temp mp4 (only ss)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Render video related",
+      "author": "Kiki",
+      "version": "0.1",
+      "loc": "",
+      "exec": "ffmpeg",
+      "usage": [
+        {
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -map_metadata -1 -map_chapters -1 -map 0:v -map 0:a -shortest -c:v libvpx-vp9 -b:v 0 -crf [:crf] -pix_fmt yuv420p -vf scale=-1:[:width] -deadline good -cpu-used 1 -tile-columns 6 -threads 6 -c:a libopus -b:a 320k -ac 2 \"[:out]\" -y",
+          "description": "Render with just 1 pass"
+        },
+        {
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -map 0:v:0 -shortest -c:v libvpx-vp9 -pass 1 -b:v 0 -crf [:crf] -pix_fmt yuv420p -g 119 -auto-alt-ref 1 -arnr-maxframes 10 -arnr-strength 3 -arnr-type 3 -lag-in-frames 25 -row-mt 1 -frame-parallel 0 -deadline good -cpu-used 4 -vf scale=-1:[:width] -tile-columns 2 -tile-rows 0 -threads 4 -map_chapters -1 -map_metadata -1 -an -f null -",
+          "description": "2 pass rendering: PASS #1"
+        },
+        {
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -map 0:v:0 -shortest -c:v libvpx-vp9 -pass 2 -b:v 0 -crf [:crf] -pix_fmt yuv420p -g 119 -auto-alt-ref 1 -arnr-maxframes 10 -arnr-strength 3 -arnr-type 3 -lag-in-frames 25 -row-mt 1 -frame-parallel 0 -deadline good -cpu-used 0 -vf scale=-1:[:width] -tile-columns 2 -tile-rows 0 -threads 4 -map_chapters -1 -map_metadata -1 -map 0:a:0 -c:a libopus -b:a 320k -ac 2 -af volume=0dB \"[:out]\" -y",
+          "description": "2 pass rendering: PASS #2"
+        },
+        {
+          "call": "-hide_banner -i \"[:i_Vid]\" -i \"[:i_Flac]\" -c:v copy -map 0:v:0 -map 1:a:0 -shortest -b:a 320k -ac 2 \"[:out]\" -y ",
+          "description": "Put audio onto video"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Make audio from input",
+      "author": "Kiki",
+      "version": "0.1",
+      "loc": "",
+      "exec": "ffmpeg",
+      "usage": [
+        {
+          "call": "-hide_banner -i \"[:in]\" -b:a 320k -ac 2 -map a \"[:out]\" -y",
+          "description": "Audio from input [Don't edit]"
+        },
+        {
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -b:a 320k -ac 2 -map 0:a:[:aid] \"[:out]\" -y",
+          "description": "Audio from input with ss, to, aid [Don't edit]"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Mkv to mp4 for Vegas",
+      "author": "Kiki",
+      "version": "0.1",
+      "loc": "",
+      "exec": "ffmpeg",
+      "usage": [
+        {
+          "call": "-hide_banner -i \"[:in]\" -c:v copy -c:a aac -strict experimental -b:a 320k -ac 2 \"[:out]\" -y",
+          "description": "whole"
+        },
+        {
+          "call": "-hide_banner -ss [:ss] -i \"[:in]\" -c:v copy -c:a aac -strict experimental -b:a 320k -ac 2 \"[:out]\" -y",
+          "description": "with ss"
+        },
+        {
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -c:v copy -c:a aac -strict experimental -b:a 320k -ac 2 \"[:out]\" -y",
+          "description": "with ss and to"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Volume edit",
+      "author": "Kiki",
+      "version": "0.1",
+      "loc": "",
+      "exec": "ffmpeg",
+      "usage": [
+        {
+          "call": "-hide_banner -i \"[:in]\" -c:v copy -map v:0 -map a:0 -b:a 320k -ac 2 -af volume=[:volChg]dB \"[:out]\" -y",
+          "description": "out is video [Don't edit]"
+        },
+        {
+          "call": "-hide_banner -i \"[:in]\" -c:v copy -map a:0 -b:a 320k -ac 2 -af volume=[:volChg]dB \"[:out]\" -y",
+          "description": "out is only audio [Don't edit]"
+        }
+      ]
+    }
+  ]
+}

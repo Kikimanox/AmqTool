@@ -1,12 +1,358 @@
 ﻿<Window x:Class="AmqTool.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vj="clr-namespace:AmqTool.UserControls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AmqTool"
+        xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
+        xmlns:mpv="clr-namespace:Mpv.Net.Wpf;assembly=Mpv.Net.Wpf"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="AmqTool" 
+        Height="720" 
+        Width="1083"
+        MinWidth="264"
+        WindowState="Normal"
+        Closing="Window_Closing"
+        StateChanged="Window_StateChanged"
+        SourceInitialized="Window_SourceInitialized"
+        PreviewKeyDown="Window_PreviewKeyDown" 
+        DragEnter="Window_DragEnter"
+        AllowDrop="True"
+        DragDrop.Drop="Window_Drop"
+        KeyDown="Window_KeyDown">
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo Description="Some desc" ProgressValue="0" ProgressState="None"/>
+    </Window.TaskbarItemInfo>
     <Grid>
-        
+        <DockPanel>
+            <Menu Panel.ZIndex="100" Name="_Top_Menu" DockPanel.Dock="Top" Background="{DynamicResource TopNavBar}">
+                <MenuItem Header="_File" Foreground="{DynamicResource PrimaryText}">
+                    <MenuItem Header="_Open media" Click="MenuItem_Click"></MenuItem>
+                    <Separator/>
+                    <MenuItem Header="_Open default render output directory" Click="MenuItem_Click"></MenuItem>
+                    <MenuItem Header="_Open default volume checker directory" Click="MenuItem_Click"></MenuItem>
+                    <Separator/>
+                    <MenuItem Header="_Export current jobs list" Click="MenuItem_Click"></MenuItem>
+                    <MenuItem Header="_Import expored jobs json" Click="MenuItem_Click"></MenuItem>
+                    <Separator/>
+                    <MenuItem Header="_Exit" Click="File_Exit_Click"></MenuItem>
+                </MenuItem>
+                <MenuItem Name="_Edit_Menu" Header="_Edit">
+                    <MenuItem Name="_Keybindings_MI" Header="_Keybindings" Click="MenuItem_Click"/>
+                    <MenuItem Name="_DefaultFlacPath" Header="_From vegas flac path" ToolTip="When in process mode, you can enter only the default name of the audio. Then the program will take the audio from the flac path + that file name + .flac (or .mp3)" Click="MenuItem_Click"/>
+                    <MenuItem Name="_DefaultMp4Path" Header="_Into vegas mp4 path" ToolTip="This is the path where to the Mkv to Mp4 button will save the Mp4 files to. Which are then used in Vegas for timing and stuff" Click="MenuItem_Click"/>
+                    <MenuItem Name="_DefaultOutPutPath" Header="_Default render output path" ToolTip="This is the folder where all the videos will be rendered into" Click="MenuItem_Click"/>
+                    <Separator/>
+                    <MenuItem Name="_Edit_All_Config" Header="_Edit all config" Click="MenuItem_Click"/>
+                    <Separator/>
+                    <MenuItem Name="_Dont_clear_textboxes" Header="_Don't clear textboxes on focus" Click="MenuItem_Click"/>
+                    <Separator/>
+                    <MenuItem Name="_AllSettings_MI" Header="_ffmpeg settings" Click="MenuItem_Click"/>
+                </MenuItem>
+                <MenuItem Header="_View">
+                    <!--<MenuItem Header="_Toggle dark theme" Click="MenuItem_Click"></MenuItem>
+                    <Separator/>-->
+                    <MenuItem Header="_Randomize home background" Click="MenuItem_Click"></MenuItem>
+                </MenuItem>
+                <MenuItem Name="_Mode_Menu" Header="_Mode">
+                    <MenuItem Name="_GoHome_Menu" IsEnabled="False" Header="_Home" RenderOptions.BitmapScalingMode="Fant" Click="MenuItem_Click">
+                        <MenuItem.Icon>
+                            <Image Source="{StaticResource CheckIcon}"></Image>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem IsEnabled="False" Header="_Volume" RenderOptions.BitmapScalingMode="Fant" Click="MenuItem_Click"></MenuItem>
+                    <MenuItem IsEnabled="False" Header="_Get clips" RenderOptions.BitmapScalingMode="Fant" Click="MenuItem_Click"></MenuItem>
+                    <MenuItem IsEnabled="False" Header="_Process" RenderOptions.BitmapScalingMode="Fant" Click="MenuItem_Click"></MenuItem>
+                </MenuItem>
+                <MenuItem Name="_About_Menu" Header="_Help">
+                    <MenuItem Name="_About_Info" Header="_About" Click="MenuItem_Click"></MenuItem>
+                </MenuItem>
+            </Menu>
+            <StackPanel Panel.ZIndex="100" Name="_Status_SP" Background="{DynamicResource StatusBarBg}" DockPanel.Dock="Bottom">
+                <DockPanel>
+                    <TextBlock Name="_StatusBar_Left" Text="Status info L" Margin="5 2 0 2" Foreground="{DynamicResource PrimaryText}"/>
+                    <TextBlock TextAlignment="Right" Name="_StatusBar_Right" Text="Status info R" Margin="0 2 5 2" Foreground="{DynamicResource PrimaryText}"/>
+                </DockPanel>
+            </StackPanel>
+            <Grid  Name="_Top_Level_Grid" Background="{DynamicResource BackgroundPrimary}">
+                <!--Grids-->
+                <!--Home grid-->
+                <Grid Name="_Home_Grid" Visibility="Collapsed">
+                    <StackPanel>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource HomePageTitle}" Text="Welcome to AmqTool"></TextBlock>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource ModeSP}">
+                            <Button Name="B_Volume" Content="Volume" Style="{StaticResource ModeButton}" Click="Selec_Mode_Button_Click"></Button>
+                            <TextBlock Style="{StaticResource ModeInfo}" Text="And bitrate checker" TextWrapping="Wrap" Width="190px"></TextBlock>
+                            <!--<TextBox x:Name="Volume_TBX_Intro" Style="{StaticResource Tbx_Edi}" Text="Media web url" LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus"></TextBox>-->
+                        </StackPanel>
+                        <StackPanel Margin="29 30 0 0" Style="{StaticResource ModeSP}">
+                            <Button Name="B_Clips" Content="Get clips" Style="{StaticResource ModeButton}" Click="Selec_Mode_Button_Click"></Button>
+                            <TextBlock Style="{StaticResource ModeInfo}" Text="Trim from episode" TextWrapping="Wrap" Width="219px"></TextBlock>
+                        </StackPanel>
+                        <StackPanel Margin="28 30 0 0" Style="{StaticResource ModeSP}">
+                            <Button Name="B_Process" Content="Process" Style="{StaticResource ModeButton}" Click="Selec_Mode_Button_Click"></Button>
+                            <TextBlock Style="{StaticResource ModeInfo}" Text="Video + flac = webm" TextWrapping="Wrap" Width="218px"></TextBlock>
+                        </StackPanel>
+                        <StackPanel Margin="28 30 0 0" Style="{StaticResource ModeSP}">
+                            <Button Name="B_Mp4_to_mkv" Content="Mkv to Mp4" Style="{StaticResource ModeButton2}" Click="Selec_Mode_Button_Click"></Button>
+                            <TextBlock Name="MkvToMp4Hint" Style="{StaticResource ModeInfo}" Text="Select files to convert to mp4" TextWrapping="Wrap" Width="218px"></TextBlock>
+                        </StackPanel>
+                        <StackPanel Margin="28 30 0 0" Style="{StaticResource ModeSP}">
+                            <Button Name="B_Extract_audio" Content="Extract audio" Style="{StaticResource ModeButton2}" Click="Selec_Mode_Button_Click"></Button>
+                            <TextBlock Name="ExtractAudioHint" Style="{StaticResource ModeInfo}" Text="Select files to convert to flac" TextWrapping="Wrap" Width="218px"></TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                    <Grid.Background>
+                        <ImageBrush Opacity="0.9" Stretch="UniformToFill" ImageSource="Assets/HomeBackgrounds/defaultBG.png" x:Name="_Home_Grid_BG"/>
+                    </Grid.Background>
+                </Grid>
+
+                <!--All non home grids-->
+                <Grid x:Name="Non_Home_Grid" Panel.ZIndex="1" Background="{DynamicResource BackgroundDark}" Visibility="Visible">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="248px"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="360*"/>
+                        <RowDefinition Height="71*"/>
+                    </Grid.RowDefinitions>
+
+                    <!--MPV GRID-->
+                    <Grid x:Name="MPV_Clips" Grid.Row="0" Grid.Column="0" Background="#FF2B2B2B" Visibility="Visible">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition />
+                                <RowDefinition Height="60" />
+                                <RowDefinition Height="22"/>
+                            </Grid.RowDefinitions>
+                            <!--Main menu for file selection-->
+                            <!--
+                            <Menu>
+                                <MenuItem Header="File">
+                                    <MenuItem
+                                    Header="Load file..." />
+                                </MenuItem>
+                            </Menu>-->
+                            <!--Mpv controls. Display is the video output-->
+
+                            <mpv:MpvDisplay
+                                Grid.Row="1"
+                                x:Name="Display"
+                                />
+                            <!--Player controller. Main interaction-->
+                            <mpv:MpvPlayer
+                                x:Name="Player"
+                                Grid.Row="2"
+                                Display="{Binding ElementName=Display}" Grid.RowSpan="2"/>
+                        </Grid>
+                    </Grid>
+                    <!--CONSOLE GRID-->
+                    <Grid x:Name="_CONSOLE_GRID" Visibility="Hidden">
+                        <RichTextBox x:Name="outputBox"
+                                     Background="#002b36"
+                                     Foreground="#eee8d5"
+                                     FontFamily="Consolas"
+                                     FontSize="14"                                     
+                                     ScrollViewer.CanContentScroll="False"
+                                     VerticalScrollBarVisibility="Auto" 
+                                     HorizontalScrollBarVisibility="Auto" 
+                                     IsReadOnly="True">
+                            <FlowDocument/>
+                        </RichTextBox>
+                    </Grid>
+
+
+                    <!--Get clips Top Right [JOBS]-->
+
+                    <StackPanel Grid.Row="0" Grid.Column="1" x:Name="TR_JobsRelated_" Visibility="Visible">
+                        <!--BUILDING BLOCKS-->
+                        <ListBox Visibility="Collapsed" Style="{StaticResource ListBoxJobs}">
+                            <!--just here for style building-->
+                            <StackPanel>
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock HorizontalAlignment="Left" Text="Mushoku ep 3" ToolTip="SameAsTxtTODO" Style="{StaticResource JobName}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" HorizontalAlignment="Left" Text="outFileNameHere" ToolTip="Set output file name. (anything* but 'outFileNameHere' is allowed)" Style="{StaticResource Tbx_OutFile}" IsEnabled="True"/>
+                                        <TextBlock Style="{StaticResource JobName}" Text=".webm|.mp3" FontSize="11px" Margin="3 6 0 0" Opacity="0.2"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" HorizontalAlignment="Left" Text="outFileSubDirectory" ToolTip="Set output sub folder file name. (anything but 'outFileSubDirectory' is allowed)" Style="{StaticResource Tbx_OutFile}" Opacity="0.6" IsEnabled="True"/>
+                                    </StackPanel>
+                                    <StackPanel Margin="0 4 0 0" Orientation="Horizontal">
+                                        <TextBlock MouseDown="TextBlock_MouseDown_Preview7" IsEnabled="False" ToolTip="Click me to preview 720p version if exists/is rendered (or just click the green eye icon)" Margin="3 0 0 0" HorizontalAlignment="Left" Foreground="Gray" Text="720" Style="{StaticResource JobNameButHand}"/>
+                                        <TextBlock MouseDown="TextBlock_MouseDown_Preview4" IsEnabled="False" ToolTip="Click me to preview 480p version if exists/is rendered" Margin="10 0 0 0" HorizontalAlignment="Left" Foreground="Gray" Text="480" Style="{StaticResource JobNameButHand}"/>
+                                        <TextBlock MouseDown="TextBlock_MouseDown_Preview3" IsEnabled="False" ToolTip="Click me to preview mp3 version if exists/is rendered" Margin="6 0 0 0" HorizontalAlignment="Left" Foreground="Gray" Text="mp3" Style="{StaticResource JobNameButHand}"/>
+                                        <TextBlock Margin="6 0 0 0" HorizontalAlignment="Left" Foreground="Gray" Opacity="0.5" Text="Crfs: " Style="{StaticResource JobName}"/>
+                                        <TextBox TextChanged="ValidateCRF" Margin="3 0 0 0" HorizontalAlignment="Left" Opacity="0.6" Foreground="Gray" Text="20" Style="{StaticResource Tbx_Crf}" ToolTip="Crf for the output rendered in 720p (default is 20)" IsEnabled="True"/>
+                                        <TextBox TextChanged="ValidateCRF" Margin="5 0 0 0" HorizontalAlignment="Left" Opacity="0.6" Foreground="Gray" Text="24" Style="{StaticResource Tbx_Crf}" ToolTip="Crf for the output rendered in 480p (default is 24)" IsEnabled="True"/>
+                                        <Button ToolTip="Copy uploaded 720p url" Style="{StaticResource JobsBTN_CopyUploaded7}" IsEnabled="False" Opacity="0.1" Margin="5 0 0 0"/>
+                                        <Button ToolTip="Copy uploaded 480p url" Style="{StaticResource JobsBTN_CopyUploaded4}" IsEnabled="False" Opacity="0.1" Margin="2 0 0 0"/>
+                                        <Button ToolTip="Copy uploaded mp3 url" Style="{StaticResource JobsBTN_CopyUploaded3}" IsEnabled="False" Opacity="0.1" Margin="2 0 0 0"/>
+                                    </StackPanel>
+
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox ToolTip="Render out and save in 720p (default)" Style="{StaticResource CheckboxJobs}" IsChecked="True" IsHitTestVisible="true"/>
+                                    <CheckBox ToolTip="Render out and save in 480p" Style="{StaticResource CheckboxJobs}" Margin="2 0 0 0" IsHitTestVisible="true"/>
+                                    <CheckBox ToolTip="Render out and save mp3 audio file" Style="{StaticResource CheckboxJobs}" Margin="2 0 0 0" IsHitTestVisible="true"/>
+                                    <Button ToolTip="Load the settings to review or tweak them and add a new job later or somethig." Style="{StaticResource JobsBTN_Edit}" Margin="3 0 0 0" IsEnabled="True"/>
+                                    <Button ToolTip="Remove this from the list" ToolTipService.InitialShowDelay="1500" Style="{StaticResource JobsBTN_Cancel}" Margin="5 0 0 0" IsEnabled="True"/>
+                                    <Button ToolTip="Preview the video result (default: 720, for others click on the texts above the checkboxes)" Style="{StaticResource JobsBTN_CheckVideo}" IsEnabled="False" Opacity="0.2" Margin="5 0 0 0"/>
+                                    <Button ToolTip="Check the volume (priority 720 > 480 > mp3only)" Style="{StaticResource JobsBTN_VolumeCheck_Before}" IsEnabled="False" Opacity="0.2" Margin="5 0 0 0">
+
+                                    </Button>
+                                    <Button ToolTip="Start upload to catbox" Style="{DynamicResource JobsBTN_Upload}" IsEnabled="False" Opacity="0.2" Margin="5 0 0 0"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" >
+                                    <Button ToolTip="Click to execute volume edit on the rendered files (will edit volume for 720, 480 and mp3 if they exist) The slider can be used before or after rendering, but the button will only be enable after rendering. Aka. you can try to guess the volume edit in advance, but not really suggested, I guess." Style="{StaticResource JobsBTN_VolumeEdit}" Margin="3 5 6 0" IsEnabled="False" Opacity="0.2"/>
+                                    <Slider Style="{StaticResource VolumeEditSlider}" ValueChanged="Slider_ValueChanged"
+                                            Minimum="-10" Maximum="10" IsSnapToTickEnabled="True" TickFrequency="0.5" Value="0" IsEnabled="{Binding _VolumeEditSlider}"/>
+                                    <TextBlock Opacity="0.7" Margin="3 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FF45ADF5" Text="{Binding EditVolumeValue}" Width="31px" Style="{StaticResource JobName}" FontSize="9px"/>
+                                    <TextBlock Margin="9 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FFE4DDDD" Text="(Max | Mean)" ToolTip="(Max dB | Mean dB) [MaxOut dB | MeanOut dB] -- the latter appears in process mode" Style="{StaticResource JobNameMM}"/>
+                                </StackPanel>
+                                <DockPanel >
+                                    <TextBlock Margin="0 3 0 0" FontSize="10px" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#999" Opacity="0.7" Text="[12000 | No 720p | No 480p] kb/s" ToolTip="[Trimmed part of the Original | 720 | 480] (video bitrates)" Style="{StaticResource Bitrates}"/>
+                                    <Button HorizontalAlignment="Right" >aa</Button>
+                                </DockPanel>
+                            </StackPanel>
+                            <Separator Opacity="0.5" Margin="0 4 0 0"/>
+                        </ListBox>
+
+                        <!--VOLUME JOBS-->
+                        <vj:VolumeJobs x:Name="VolumeJobs" Visibility="Visible" Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" MaxHeight="760px"></vj:VolumeJobs>
+                        <!--REGULAR JOBS-->
+                        <ListBox Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" MaxHeight="760px" VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="JobsLV" ItemsSource="{Binding JobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Vertical">
+                                                <TextBlock HorizontalAlignment="Left" Text="{Binding ShowTitle}" ToolTip="{Binding ShowTitleToolTip}" Style="{StaticResource JobName}"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="OutFileName_TextEdited" HorizontalAlignment="Left" Text="{Binding OutFileName, Mode=TwoWay}" ToolTip="Set output file name. (anything* but 'outFileNameHere' is allowed)" Style="{StaticResource Tbx_OutFile}" IsEnabled="{Binding __OutFileName}"/>
+                                                    <TextBlock Style="{StaticResource JobName}" Opacity="0.2" Text=".webm|.mp3" FontSize="11px" Margin="3 6 0 0" />
+                                                </StackPanel>
+                                                <StackPanel>
+                                                    <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" HorizontalAlignment="Left" Text="{Binding OutFileSubDirectory, Mode=TwoWay}" ToolTip="Set output sub folder file name. (anything but 'outFileSubDirectory' is allowed)" Style="{StaticResource Tbx_OutFile}" Opacity="0.6" IsEnabled="{Binding __OutFileSubDirectory}"/>
+                                                </StackPanel>
+                                                <StackPanel Margin="0 4 0 0" Orientation="Horizontal">
+                                                    <TextBlock PreviewMouseDown="TextBlock_MouseDown_Preview7" IsEnabled="{Binding __Rendered720File}" ToolTip="Click me to preview 720p version if exists/is rendered (or just click the green eye icon)" Margin="3 0 0 0" HorizontalAlignment="Left" Foreground="{Binding AboveChkbx7}" Text="720" Style="{StaticResource JobNameButHand}"/>
+                                                    <TextBlock PreviewMouseDown="TextBlock_MouseDown_Preview4" IsEnabled="{Binding __Rendered480File}" ToolTip="Click me to preview 480p version if exists/is rendered" Margin="10 0 0 0" HorizontalAlignment="Left" Foreground="{Binding AboveChkbx4}" Text="480" Style="{StaticResource JobNameButHand}"/>
+                                                    <TextBlock PreviewMouseDown="TextBlock_MouseDown_Preview3" IsEnabled="{Binding __RenderedMP3File}" ToolTip="Click me to preview mp3 version if exists/is rendered" Margin="6 0 0 0" HorizontalAlignment="Left" Foreground="{Binding AboveChkbx3}" Text="mp3" Style="{StaticResource JobNameButHand}"/>
+                                                    <TextBlock Margin="6 0 0 0" HorizontalAlignment="Left" Foreground="Gray" Opacity="0.5" Text="Crfs: " Style="{StaticResource JobName}"/>
+                                                    <TextBox TextChanged="ValidateCRF" Margin="3 0 0 0" HorizontalAlignment="Left" Foreground="Gray" Text="{Binding Crf720}" Style="{StaticResource Tbx_Crf}" ToolTip="Crf for the output rendered in 720p (default is 20)" IsEnabled="{Binding __Crf720}"/>
+                                                    <TextBox TextChanged="ValidateCRF" Margin="5 0 0 0" HorizontalAlignment="Left" Foreground="Gray" Text="{Binding Crf480}" Style="{StaticResource Tbx_Crf}" ToolTip="Crf for the output rendered in 480p (default is 24)" IsEnabled="{Binding __Crf480}"/>
+                                                    <Button ToolTip="Copy uploaded 720p url" Style="{StaticResource JobsBTN_CopyUploaded7}" IsEnabled="{Binding __CatboxLink720}" Click="JobsBTN_CopyUploaded7_Click" Margin="5 0 0 0"/>
+                                                    <Button ToolTip="Copy uploaded 480p url" Style="{StaticResource JobsBTN_CopyUploaded4}" IsEnabled="{Binding __CatboxLink480}" Click="JobsBTN_CopyUploaded4_Click" Margin="2 0 0 0"/>
+                                                    <Button ToolTip="Copy uploaded mp3 url" Style="{StaticResource JobsBTN_CopyUploaded3}" IsEnabled="{Binding __CatboxLinkMP3}" Click="JobsBTN_CopyUploaded3_Click" Margin="2 0 0 0"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <CheckBox ToolTip="Render out and save in 720p (default)" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding Render720_ChkB, Mode=TwoWay}" IsHitTestVisible="{Binding __Render720}"/>
+                                                <CheckBox ToolTip="Render out and save in 480p" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding Render480_ChkB, Mode=TwoWay}" Margin="2 0 0 0" IsHitTestVisible="{Binding __Render480}"/>
+                                                <CheckBox ToolTip="Render out and save mp3 audio file" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding RenderMP3_ChkB, Mode=TwoWay}" Margin="2 0 0 0" IsHitTestVisible="{Binding __RenderMP3}"/>
+                                                <Button ToolTip="Load the settings to review or tweak them and add a new job later or somethig." Style="{StaticResource JobsBTN_Edit}" Click="JobsBTN_Edit_Click" Margin="3 0 0 0" IsEnabled="{Binding __EditBTN}"/>
+                                                <Button PreviewMouseDown="JobsBTN_Cancel_MouseDown" ToolTip="Remove this from the list (click with middle or right mouse button to also delete local files from this render)" Style="{StaticResource JobsBTN_Cancel}" Margin="5 0 0 0" IsEnabled="{Binding __CancelBTN}"/>
+                                                <Button Click="JobsBTN_CheckVideo_Click" ToolTip="Preview the video result (default: 720, for others click on the texts above the checkboxes)" Style="{StaticResource JobsBTN_CheckVideo}" IsEnabled="{Binding __Rendered720File_EyeBtn}" Margin="5 0 0 0"/>
+                                                <Button Click="JobsBTN_VolumeCheck_Click" ToolTip="Check the volume (priority 720 > 480 > mp3only) in process mode, BEFORE RENDERING, this will refresh the volume value of the audio in case you have re-rendered it in Vegas. (in process mode) (meanwhile in get clips mode, this will display the value if you had changed the volume with the slider, aka. if slider is at +3dB, this button will display what the volume would be if you did that change) -- AFTER RENDERING in both modes this will take the rendered file AT VOLUME CHANGE 0 and display the volume for that. Meaning that after rendering this will ignore the slider. If you want to make a volume edit with the slider, use the orange button instead, then after the process the volume values will be updated." Style="{StaticResource JobsBTN_VolumeCheck_Before}" IsEnabled="{Binding __GetVolumeBTN}"  Margin="5 0 0 0"/>
+
+                                                <Button Click="JobsBTN_Upload_Click" Loaded="UPLButton_Loaded" ToolTip="Start upload to catbox (or copy all links for discord if it has been uploaded already)" Style="{StaticResource JobsBTN_Upload}" IsEnabled="{Binding __UploadToCatboxAllBTN}" Margin="5 0 0 0"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" >
+                                                <Button Click="JobsBTN_VolumeEdit_Click" ToolTip="Click to execute volume edit on the rendered files (will edit volume for 720, 480 and mp3 if they exist) The slider can be used before or after rendering, but the button will only be enable after rendering. Aka. you can try to guess the volume edit in advance, but not really suggested, I guess." Style="{StaticResource JobsBTN_VolumeEdit}" Margin="3 5 6 0" IsEnabled="{Binding __EditVolumeValueOrangeBTN}" />
+                                                <Slider Style="{StaticResource VolumeEditSlider}" IsEnabled="{Binding __VolumeEditSlider}" ValueChanged="Slider_ValueChanged"
+                                            Minimum="-20" Maximum="20" IsSnapToTickEnabled="True" TickFrequency="0.5" Value="{Binding VolumeChangeValue}"/>
+                                                <TextBlock Loaded="TextBlockSLID_Loaded" Opacity="0.8" Margin="3 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FF45ADF5" Text="+0dB" Width="31px" Style="{StaticResource JobName}" FontSize="9px"/>
+                                                <TextBlock Margin="9 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FFE4DDDD" Text="{Binding maxVolume_meanVolume}" ToolTip="(Max dB | Mean dB) [MaxOut dB | MeanOut dB] -- the latter one is the volume of the flac inputted in process mode." Style="{StaticResource JobNameMM}"/>
+                                            </StackPanel>
+                                            <DockPanel>
+                                                <TextBlock Margin="0 3 0 0" FontSize="10px" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#999" Opacity="0.8" Text="{Binding Bitrates}" ToolTip="[Trimmed part of the Original | 720 | 480] (video bitrates)" Style="{StaticResource Bitrates}"/>
+                                                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                                                    <Button PreviewMouseDown="JobsBTN_Simulate_Click" HorizontalAlignment="Right"  ToolTip="''Simulate rendering'' -> basically, output a clip with the potentially edited audio as if it was rendered Ooooooor you can: RMB this if you want to slap the audio over the original, no re-rendering the video! If you've checked this, now click the button next to this checkbox. If its fine just delete this job or something, so it wont get picked up when you click Start jobs. OOOOOOOOR you can also click this with the MIDDLE MOUSE BUTTON in order to open the output directory" IsEnabled="{Binding __DuplicateJob}" Style="{StaticResource JobsBTN_Simulate}"/>
+                                                    <Button Margin="3 0 0 0" Click="JobsBTN_Duplicate_Click" HorizontalAlignment="Right"  ToolTip="Duplicate job, as if clicking Edit job (blue pencil) -> Add job, but with one click" IsEnabled="{Binding __DuplicateJob}" Style="{StaticResource JobsBTN_Duplicate}"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </StackPanel>
+                                        <Separator Opacity="0.5" Margin="0 4 0 0"/>
+                                        <Label Visibility="Collapsed" Content="{Binding Id}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+
+                    <!--Get clips Bottom Right [STARE JOBS BTN]-->
+                    <StackPanel Orientation="Vertical" x:Name="BR_JobsRelated_" Grid.Row="1" Grid.Column="1" Visibility="Visible">
+                        <Button x:Name="CLIPS_START_JOBS" Style="{StaticResource StartJobsButton}" Content="Start jobs" Margin="0 10 0 0" Click="MPV_Btn_Click" Visibility="Collapsed"/>
+                        <Button x:Name="STOP_JOBS" Style="{StaticResource StopJobsButton}" Visibility="Collapsed" Content="Stop jobs" Margin="0 10 0 0" Click="MPV_Btn_Click"/>
+                        <Button x:Name="CLEAR_ALL_JOBS" Style="{StaticResource ClearAllJobsBtn}" Content="Clear jobs list" Margin="0 2 0 0" Click="MPV_Btn_Click" Visibility="Visible"/>
+                        <Button x:Name="MULTI_INPUT_VOLUME" Style="{StaticResource MultiInputBtnJobs}" Content="Multi input" Margin="0 2 0 0" Click="MPV_Btn_Click" Visibility="Visible"/>
+                        <Grid x:Name="PROG_BAR_JOBS_GRID" Visibility="Collapsed" Margin="0 2 0 0">
+                            <ProgressBar Value="{Binding ProgBar_Jobs_Val}" Style="{StaticResource ProgBarJobs}" Name="PROG_BAR_JOBS"/>
+                            <TextBlock Style="{StaticResource ModeInfo}" Foreground="White" FontWeight="Normal" FontSize="14" Margin="0" Text="{Binding ElementName=PROG_BAR_JOBS, Path=Value, StringFormat={}{0:0}%}"   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!--Bottom Left jobs related-->
+                    <StackPanel x:Name="BL_JobsRelated_" Orientation="Vertical" Grid.Row="1" Grid.Column="0" Visibility="Visible">
+                        <StackPanel Orientation="Horizontal" Margin="0 20 0 0">
+                            <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="TXT_Chg" Name="GET_CLIPS_START" Style="{StaticResource Tbx_Edi2}" MinWidth="95px" Text="{Binding StartTime, Mode=TwoWay}"/>
+                            <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="TXT_Chg" Name="PROCESS_TIME_T" Style="{StaticResource Tbx_Edi2}" ToolTip="You can (should) ignore the hh: part at the start..." Background="#e0e0e0" MinWidth="95px" Text="{Binding TimeLen, Mode=TwoWay}"/>
+                            <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="TXT_Chg" Name="GET_CLIPS_END" Style="{StaticResource Tbx_Edi2}" MinWidth="95px" Text="{Binding EndTime, Mode=TwoWay}" Visibility="Collapsed"/>
+                            <Button Click="MPV_Btn_Click" x:Name="MPV_Reset_GC" Style="{StaticResource ModeButton_NoShadow}" Visibility="Collapsed" Background="LightGray" Width="100px" Margin="10 0 0 0" VerticalAlignment="Center" Height="26px" Content="Reset Times"></Button>
+                            <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="TXT_Chg" Name="GET_CLIPS_OUT_TBX" Style="{StaticResource Tbx_Edi3}" MinWidth="120px" Margin="20 0 0 0" Text="{Binding GetClipsOutFileTbx, Mode=TwoWay}"/>
+                            <Button x:Name="MPV_ADD_JOB_GET_CLIPS" Style="{StaticResource ModeButton_NoShadow_AddJob}" Width="80px" Margin="10 0 0 0" VerticalAlignment="Center" Height="26px" Content="Add job" Click="MPV_ADD_JOB_GET_CLIPS_Click"></Button>
+                            <TextBlock Name="Process_FileNameHint" Margin="5 0 0 0" FontSize="10px" HorizontalAlignment="Left" Visibility="Visible" VerticalAlignment="Center" MaxWidth="500px" Foreground="#999" Opacity="0.5" Text="Hint: Same file name as the .flac you rendered in Vegas! (Hover for details)" Style="{StaticResource Bitrates}" ToolTip="In the context menu 'Edit > From vegas flac path' you set the path from where the .flac audio will be taken from. That audio is the audio that you rendered in Vegas. Inside Vegas you will also see the duration of the region that you have rendered out. So set that in the second text box. The program will then take that file, and also use that name for the output file name."/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource ToolsButtonsGC}" Name="OneFrameBackPreviewerGC" Click="OneFramePreviewerGC_Click" Background="LightBlue" Width="30px" ToolTip="Move current timestamp 1 frame back try it out" Margin="9 3 0 0" VerticalAlignment="Center" Height="26px" Content="🡐"></Button>
+                            <Button Style="{StaticResource ToolsButtonsGC}" Name="OneFrameForwardPreviewerGC" Click="OneFramePreviewerGC_Click" Background="LightBlue" Width="30px" ToolTip="Move current timestamp 1 frame forward try it out" Margin="3 3 0 0" VerticalAlignment="Center" Height="26px" Content="🡒"></Button>
+                            <Button Style="{StaticResource ToolsButtonsGC}" Name="AnotherCheckStartButton" Click="AnotherCheckStartButton_Click" Background="#FF5CBBDA" Width="30px" ToolTip="Same as the button on the player. But this one will always unpause while checking." Margin="3 3 0 0" VerticalAlignment="Center" Height="26px">
+                                <Viewbox
+                                            Width="18"
+                                            Height="18">
+                                    <Canvas
+                                                Width="24"
+                                                Height="24">
+                                        <Path  Data="M4,2H2V22H4V13H18.17L12.67,18.5L14.08,19.92L22,12L14.08,4.08L12.67,5.5L18.17,11H4V2Z"
+                                                    Fill="Black" />
+                                    </Canvas>
+                                </Viewbox>
+                            </Button>
+                            <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="TXT_Chg" Margin="10 3 0 0" Padding="2 0 4 0" Name="I_Know_the_process_input_file_name" Style="{StaticResource Tbx_Edi3}" MinWidth="235px" MaxWidth="615px" Text="{Binding ProcessFileInPath, Mode=TwoWay}" FontSize="11px" VerticalContentAlignment="Center" ToolTip="{Binding ProcessFileInPath}"/>
+                            <Button Click="ProcessVideoSource_Click" ToolTip="Find video path to append to the text box (this will not load it into the video player)" Style="{StaticResource JobsBTN_OpenFolder}" Margin="5 3 0 0" Name="LoadProcessVideoSource"/>
+                            <Button Click="ProcessVideoSource_Click" ToolTip="Copy the current path/text in the textbox" Style="{StaticResource JobsBTN_ProcessCopyPath}" Margin="5 3 0 0" Name="CopyProcessVideoPath"/>
+                            <Button Click="ProcessVideoSource_Click" ToolTip="Clear this text box if it has a path in it (this will not unload the playing video)" Style="{StaticResource JobsBTN_ClearProcessVideoPath}" Margin="5 3 0 0" Name="ProcessClearCbx"/>
+                            <Button Click="ProcessVideoSource_Click" ToolTip="Load the video into the player" Style="{StaticResource JobsBTN_CheckVideo_ik_invalid}" Margin="5 3 0 0" Name="PreviewIKnowPathBTN"/>
+                            <TextBlock Name="I_Know_the_hint" Margin="5 1 0 0" FontSize="10px" HorizontalAlignment="Left" Visibility="Visible" VerticalAlignment="Center" MaxWidth="500px" Foreground="#999" Opacity="0.5" Text="" Style="{StaticResource Bitrates}" ToolTip="This will show if your input is a valid path"/>
+
+                            <Button Style="{StaticResource ToolsButtonsGC}" Name="OneFrameBackPreviewerGC2" Visibility="Collapsed" Click="OneFramePreviewerGC_Click" Background="#FFE8D1A9" Width="30px" ToolTip="Move current timestamp 1 frame back try it out" Margin="10 3 0 0" VerticalAlignment="Center" Height="26px" Content="🡐"></Button>
+                            <Button Style="{StaticResource ToolsButtonsGC}" Name="OneFrameForwardPreviewerGC2" Visibility="Collapsed" Click="OneFramePreviewerGC_Click" Background="#FFE8D1A9" Width="30px" ToolTip="Move current timestamp 1 frame forward try it out" Margin="3 3 0 0" VerticalAlignment="Center" Height="26px" Content="🡒"></Button>
+                            <Button Style="{StaticResource ToolsButtonsGC}" Name="AnotherCheckStartButton2" Visibility="Collapsed" Click="AnotherCheckStartButton_Click" Background="#FFD6A856" Width="30px" ToolTip="Similar to the button on the player. But this one will start playing 5 seconds before the end. Also it will set the player's max time. To undo this behaviour toggle and untoggle to allow the player to go past the set max timestamp." Margin="3 3 0 0" VerticalAlignment="Center" Height="26px">
+                                <Viewbox
+                                            Width="18"
+                                            Height="18">
+                                    <Canvas
+                                                Width="24"
+                                                Height="24">
+                                        <Path  Data="M20,22H22V2H20V11H5.83L11.33,5.5L9.92,4.08L2,12L9.92,19.92L11.33,18.5L5.83,13H20V22Z"
+                                                    Fill="Black" />
+                                    </Canvas>
+                                </Viewbox>
+                            </Button>
+                            <TextBlock Name="GC_Max_pos_hint" Margin="5 2 0 0" FontSize="10px" HorizontalAlignment="Left" Visibility="Collapsed" VerticalAlignment="Center" MaxWidth="500px" Foreground="#999" Opacity="0.5" Text="Hint: to remove max possible time behaviour, double click the same btn on the player" Style="{StaticResource Bitrates}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                </Grid>
+
+            </Grid>
+        </DockPanel>
     </Grid>
 </Window>

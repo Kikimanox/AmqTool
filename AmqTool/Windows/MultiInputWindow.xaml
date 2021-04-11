@@ -1,0 +1,38 @@
+﻿<Window x:Class="AmqTool.MultiInputWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AmqTool"
+        mc:Ignorable="d"
+        WindowStartupLocation="CenterScreen"
+        Title="MultiInputWindow" Height="500" Width="600">
+    <Grid Background="#1e1e1e">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="425*"/>
+            <RowDefinition Height="60*"/>
+        </Grid.RowDefinitions>
+        <RichTextBox Grid.Row="0"
+                     x:Name="_RTB"
+                     Padding="5"
+                     Background="#1e1e1e"
+                     Foreground="#d4d4d4"
+                     FontSize="14"
+                     ScrollViewer.CanContentScroll="False"
+                     VerticalScrollBarVisibility="Auto" 
+                     HorizontalScrollBarVisibility="Auto" 
+                     ContextMenuOpening="_RTB_ContextMenuOpening"
+                     >
+            <FlowDocument/>
+            <RichTextBox.Resources>
+                <Style TargetType="{x:Type Paragraph}">
+                    <Setter Property="Margin" Value="0"/>
+                </Style>
+            </RichTextBox.Resources>
+        </RichTextBox>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" >
+            <Button x:Name="Save_BTN" Style="{StaticResource SaveCancelBTN}" Content="Check" Background="#91f2a8" Margin="0 0 0 0" Click="Button_Click"/>
+            <Button x:Name="Cancel_BTN" Style="{StaticResource SaveCancelBTN}" Content="Cancel" Background="#ed8a8a" Margin="20 0 0 0" Click="Button_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

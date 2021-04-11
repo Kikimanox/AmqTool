@@ -1,0 +1,120 @@
+﻿<Window x:Class="AmqTool.KeybindSettings"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        MouseDown="Window_MouseDown"    
+        KeyDown="Window_KeyDown"
+        KeyUp="Window_KeyUp"
+        WindowStartupLocation="CenterScreen"
+        Title="KeybindSettings" Height="600" Width="520">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="500*"/>
+            <RowDefinition Height="50*"/>
+        </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" Name="_SV" Visibility="Visible" VerticalScrollBarVisibility="Auto" Panel.ZIndex="10">
+            <StackPanel Name="_Main_SP" CanVerticallyScroll="True" CanHorizontallyScroll="False">
+                <Rectangle Style="{StaticResource Seperator_KBS}" Margin="0 0 0 0"/>
+                <TextBlock Style="{StaticResource KeybindsSettingsMainTitle}" Text="Keybind settings"/>
+                <Rectangle Style="{StaticResource Seperator_KBS}" Margin="0 20 0 20"/>
+                <!--<StackPanel HorizontalAlignment="Center" Orientation="Horizontal"> Disabled here for now
+                    <TextBlock Style="{StaticResource KeybindsSettingsSubTitle}" Margin="0 0 0 10" Text="Organizing mode dynamic keybinds"></TextBlock>
+                    <Button Content="New" Margin="10 0 0 10" Width="45" Height="25" FontSize="12" Click="New_Dynamic_KB_Click" Style="{StaticResource ModeButton_NoShadow}"/>
+                </StackPanel>
+                <ListView SelectionMode="Single" Name="_Tmp_Keybinds">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Action" Width="240px" DisplayMemberBinding="{Binding ActionName}"/>
+                            <GridViewColumn Header="Key" Width="90px" DisplayMemberBinding="{Binding Key}"/>
+                            <GridViewColumn Header="Modifiers" Width="140px" DisplayMemberBinding="{Binding ModsReadable}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>-->
+                <TextBlock Style="{StaticResource KeybindsSettingsSubTitle}" Margin="0 0 0 10" Text="Global keybinds"></TextBlock>
+                <ListView ToolTip="Double click to edit" SelectionMode="Single" Name="_Glo_Keybinds">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Action" Width="240px" DisplayMemberBinding="{Binding ActionName}"/>
+                            <GridViewColumn Header="Key" Width="90px" DisplayMemberBinding="{Binding Key}"/>
+                            <GridViewColumn Header="Modifiers" Width="140px" DisplayMemberBinding="{Binding ModsReadable}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <!--<TextBlock Style="{StaticResource KeybindsSettingsSubTitle}"  Text="Organizing mode keybinds"></TextBlock>
+                <ListView SelectionMode="Single" Name="_Org_Keybinds">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Action" Width="240px" DisplayMemberBinding="{Binding ActionName}"/>
+                            <GridViewColumn Header="Key" Width="90px" DisplayMemberBinding="{Binding Key}"/>
+                            <GridViewColumn Header="Modifiers" Width="140px" DisplayMemberBinding="{Binding ModsReadable}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBlock Style="{StaticResource KeybindsSettingsSubTitle}" Text="Editing mode keybinds"></TextBlock>
+                <ListView SelectionMode="Single" Name="_Edi_Keybinds">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Action" Width="240px" DisplayMemberBinding="{Binding ActionName}"/>
+                            <GridViewColumn Header="Key" Width="90px" DisplayMemberBinding="{Binding Key}"/>
+                            <GridViewColumn Header="Modifiers" Width="140px" DisplayMemberBinding="{Binding ModsReadable}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBlock Style="{StaticResource KeybindsSettingsSubTitle}" Text="Advanced mode keybinds"></TextBlock>
+                <ListView SelectionMode="Single" Name="_Adv_Keybinds">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Action" Width="240px" DisplayMemberBinding="{Binding ActionName}"/>
+                            <GridViewColumn Header="Key" Width="90px" DisplayMemberBinding="{Binding Key}"/>
+                            <GridViewColumn Header="Modifiers" Width="140px" DisplayMemberBinding="{Binding ModsReadable}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBlock Style="{StaticResource KeybindsSettingsSubTitle}" Text="Home mode keybinds"></TextBlock>
+                <ListView SelectionMode="Single" Name="_Hom_Keybinds">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Action" Width="240px" DisplayMemberBinding="{Binding ActionName}"/>
+                            <GridViewColumn Header="Key" Width="90px" DisplayMemberBinding="{Binding Key}"/>
+                            <GridViewColumn Header="Modifiers" Width="140px" DisplayMemberBinding="{Binding ModsReadable}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>-->
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="0" Name="_SP_Changing" Visibility="Collapsed">
+            <TextBlock Text="Changing keybinds for" Style="{StaticResource KeybindsSettingsMainTitle}" FontSize="24px"/>
+            <TextBlock Name="_ChangingAction_Tbx" Text="Some action" Style="{StaticResource KeybindsSettingsMainTitle}" FontSize="20px"/>
+            <Rectangle Style="{StaticResource Seperator_KBS}" Margin="0 15 0 0"></Rectangle>
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <TextBlock Text="Key: " Style="{StaticResource KeybindsSettingsMainTitle}" FontSize="18px"></TextBlock>
+                    <TextBlock Name="_NonMods_TB" Text="K" Style="{StaticResource KeybindsSettingsMainTitle}" FontSize="18px" Foreground="Black"></TextBlock>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <TextBlock Text="Modifiers: " Style="{StaticResource KeybindsSettingsMainTitle}" FontSize="18px"></TextBlock>
+                    <TextBlock Name="_Mods_TB" Text="None" Style="{StaticResource KeybindsSettingsMainTitle}" FontSize="18px" Foreground="Black"></TextBlock>
+                </StackPanel>
+                <Rectangle Style="{StaticResource Seperator_KBS}" Margin="0 20 0 0"/>
+                <TextBlock Name="_Changing_Info_TB" Text="Press desired keys to change keybind" Style="{StaticResource KeybindsSettingsSubTitle}" Foreground="Gray"></TextBlock>
+            </StackPanel>
+            <TextBlock Text=""></TextBlock>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Grid.Row="1" HorizontalAlignment="Center">
+            <Button Name="_Left_Btn" Click="_Btn_Click" Content="Save" Style="{StaticResource ModeButton}" Margin="0 0 20 0" Height="40" Width="100">
+                <Button.Effect>
+                    <DropShadowEffect BlurRadius="6" Color="LightGray" ShadowDepth="2"></DropShadowEffect>
+                </Button.Effect>
+            </Button>
+            <Button Name="_Right_Btn" Click="_Btn_Click" Content="Close" Style="{StaticResource ModeButton}" Margin="0 0 0 0" Height="40" Width="100">
+                <Button.Effect>
+                    <DropShadowEffect BlurRadius="6" Color="LightGray" ShadowDepth="2"></DropShadowEffect>
+                </Button.Effect>
+            </Button>
+        </StackPanel>
+
+    </Grid>
+</Window>
