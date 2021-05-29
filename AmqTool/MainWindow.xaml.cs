@@ -661,6 +661,7 @@ namespace AmqTool
                     // nothing here for now
                 }
                 config.UpdateConfig(); // so that the 1/2 pass boolean gets updated
+                CLIPS_START_JOBS.Content = config.conf.WindowProps.Use2PassEnc ? "Start jobs\n(2 pass)" : "Start jobs";
                 return;
             }
 
@@ -786,7 +787,7 @@ namespace AmqTool
 
         private async Task<string[]> AnythingToAudio()
         {
-            var files = getMultipleMediaPathFromOfd(filter: "*.mkv; *.ts; *.mp4; *.webm; *.avi");
+            var files = getMultipleMediaPathFromOfd(filter: "*.mkv; *.ts; *.mp4; *.webm; *.avi; *.m4a; *.mp3; *.flac");;
             if (files == null) return null;
             extractAudio_total += files.Length;
             foreach (var f in files)
@@ -1231,11 +1232,13 @@ namespace AmqTool
                         if (quality == "720")
                         {
                             j.FixUpBitrates(quality, await get_video_bitrate(j.Rendered720File));
+                            j.__Rendered720File = true;
                             j.AboveChkbx7 = new AboveChbxRenderStatus().done;
                         }
                         if (quality == "480")
                         {
                             j.FixUpBitrates(quality, await get_video_bitrate(j.Rendered480File));
+                            j.__Rendered480File = true;
                             j.AboveChkbx4 = new AboveChbxRenderStatus().done;
                         }
 
@@ -3206,6 +3209,12 @@ namespace AmqTool
                 Process.Start(f);
                 return;
             }
+
+            if (isProcessing)
+            {
+                MessageBox.Show(Application.Current.MainWindow, "Can only middle mouse button click this while rendering.");
+                return;
+            }
             LoadVideoIntoPlayer(f);
         }
         private void TextBlock_MouseDown_Preview4(object sender, MouseButtonEventArgs e)
@@ -3219,6 +3228,12 @@ namespace AmqTool
             if (e.MiddleButton == MouseButtonState.Pressed)
             {
                 Process.Start(f);
+                return;
+            }
+
+            if (isProcessing)
+            {
+                MessageBox.Show(Application.Current.MainWindow, "Can only middle mouse button click this while rendering.");
                 return;
             }
             LoadVideoIntoPlayer(f);
