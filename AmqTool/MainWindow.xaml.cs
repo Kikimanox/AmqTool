@@ -187,6 +187,8 @@ namespace AmqTool
             setupKeybinds();
             ToggleOnTextBoxClearing(updateConfFile: false);
 
+            CLIPS_START_JOBS.Content = config.conf.WindowProps.Use2PassEnc ? "Start jobs\n(2 pass)" : "Start jobs";
+
             //_AdvCbx.ItemsSource = advExtensions;
             //_AdvCbx.SelectedIndex = 0;
         }
@@ -241,7 +243,6 @@ namespace AmqTool
                     }
                     catch { }
             }
-
         }
 
         private void ToggleOnTextBoxClearing(bool updateConfFile)

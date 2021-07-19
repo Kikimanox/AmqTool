@@ -180,7 +180,7 @@
       "exec": "ffmpeg",
       "usage": [
         {
-          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -map_metadata -1 -map_chapters -1 -map 0:v -map 0:a -shortest -c:v libvpx-vp9 -b:v 0 -crf [:crf] -pix_fmt yuv420p -vf scale=-1:[:width] -deadline good -cpu-used 1 -tile-columns 6 -threads 6 -c:a libopus -b:a 320k -ac 2 \"[:out]\" -y",
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -map_metadata -1 -map_chapters -1 -map 0:v -map 0:a:[:aid] -shortest -c:v libvpx-vp9 -b:v 0 -crf [:crf] -pix_fmt yuv420p -vf scale=-1:[:width] -deadline good -cpu-used 1 -tile-columns 6 -threads 6 -c:a libopus -b:a 320k -ac 2 \"[:out]\" -y",
           "description": "Render with just 1 pass"
         },
         {
@@ -188,7 +188,7 @@
           "description": "2 pass rendering: PASS #1"
         },
         {
-          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -map 0:v:0 -shortest -c:v libvpx-vp9 -pass 2 -b:v 0 -crf [:crf] -pix_fmt yuv420p -g 119 -auto-alt-ref 1 -arnr-maxframes 10 -arnr-strength 3 -arnr-type 3 -lag-in-frames 25 -row-mt 1 -frame-parallel 0 -deadline good -cpu-used 0 -vf scale=-1:[:width] -tile-columns 2 -tile-rows 0 -threads 4 -map_chapters -1 -map_metadata -1 -map 0:a:0 -c:a libopus -b:a 320k -ac 2 -af volume=0dB \"[:out]\" -y",
+          "call": "-hide_banner -ss [:ss] -to [:to] -i \"[:in]\" -map 0:v:0 -shortest -c:v libvpx-vp9 -pass 2 -b:v 0 -crf [:crf] -pix_fmt yuv420p -g 119 -auto-alt-ref 1 -arnr-maxframes 10 -arnr-strength 3 -arnr-type 3 -lag-in-frames 25 -row-mt 1 -frame-parallel 0 -deadline good -cpu-used 0 -vf scale=-1:[:width] -tile-columns 2 -tile-rows 0 -threads 4 -map_chapters -1 -map_metadata -1 -map 0:a:[:aid] -c:a libopus -b:a 320k -ac 2 -af volume=0dB \"[:out]\" -y",
           "description": "2 pass rendering: PASS #2"
         },
         {

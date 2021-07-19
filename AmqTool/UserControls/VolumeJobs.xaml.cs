@@ -259,6 +259,12 @@ namespace AmqTool.UserControls
                     Title = titleShorter,
                     Title_for_tooltip = uri != toCheck ? $"{uri} || {toCheck}" : uri
                 };
+                if (File.Exists(uri))
+                {
+                    job.SavedFilePath = uri;
+                    job.__IsDownloaded = true; // TODO: Check what happens when you edit volume
+                    job.__UploadToCatboxAllBTN = true;
+                }
                 job.SavedFilePathEdited = job.SavedFilePath;
                 if (info.detailed == "download failed")
                     job.Title = "download failed";
