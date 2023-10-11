@@ -43,6 +43,18 @@ namespace AmqTool
         public double VolumeChangeValue { get => volumeChangeValue; set { volumeChangeValue = value; Changed(); } }
         public bool __IsDownloaded { get => isDownloaded; set { isDownloaded = value; Changed(); } }
         public bool __UploadToCatboxAllBTN { get => uploadToCatboxAllBTN; set { uploadToCatboxAllBTN = value; Changed(); } }
+
+        internal void Recheck()
+        {
+            if(!string.IsNullOrEmpty(savedFilePath) || !string.IsNullOrEmpty(SavedFilePathEdited))
+            {
+                if(string.IsNullOrEmpty(CatboxLinkNEW))
+                {
+                    __UploadToCatboxAllBTN = true;
+                }
+            }
+        }
+
         public bool __IsRegularJob { get => isRegularJob; set { isRegularJob = value; Changed(); } }
         public string Title { get => title; set { title = value; Changed(); } }
         public string Title_for_tooltip { get => title_for_tooltip; set { title_for_tooltip = value; Changed(); } }

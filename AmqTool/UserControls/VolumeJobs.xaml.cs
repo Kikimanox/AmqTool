@@ -52,6 +52,10 @@ namespace AmqTool.UserControls
             VolumeJobsOBS = JsonConvert.DeserializeObject<ObservableCollection<VolumeJob>>(File.ReadAllText("volume_jobs.json")) ?? new ObservableCollection<VolumeJob>();
             VolumeJobsOBS = new ObservableCollection<VolumeJob>(VolumeJobsOBS.Where(j => j.__IsRegularJob && File.Exists(j.SavedFilePath)).ToList());
             VolumeJobsLV.ItemsSource = VolumeJobsOBS;
+            foreach (var vj in VolumeJobsOBS)
+            {
+                vj.Recheck();
+            }
 
             UpdateJobsJsonFile();
         }
@@ -499,7 +503,7 @@ namespace AmqTool.UserControls
 
             job.__UploadToCatboxAllBTN = false;
             btn.Style = Application.Current.Resources["JobsBTN_Uploading"] as Style;
-            await Task.Run(async () => { while (!only_one_upl2) await Task.Delay(200); });
+            await Task.Run(async () => { while (!only_one_upl2) await Task.Delay(400); });
             await Task.Run(async () =>
             {
                 try

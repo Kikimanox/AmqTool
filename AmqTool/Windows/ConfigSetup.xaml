@@ -45,7 +45,7 @@
                 </StackPanel>
                 <!--Folder-->
                 <StackPanel Margin="20 20 0 0" Orientation="Horizontal" HorizontalAlignment="Left">
-                    <TextBox Name="TmpPath_0" LostFocus="Tbx_LostFocus" GotFocus="Tbx_GotFocus" TextChanged="Tbx_TextChanged" Style="{StaticResource Tbx_Edi4}" Text="{Binding TmpPath, Mode=TwoWay}" ToolTip="{Binding TmpPath}"/>
+                    <TextBox Background="#FF252525" Foreground="#FFF96F46" Name="TmpPath_0" LostFocus="Tbx_LostFocus" GotFocus="Tbx_GotFocus" TextChanged="Tbx_TextChanged" Style="{StaticResource Tbx_Edi4}" Text="{Binding TmpPath, Mode=TwoWay}" ToolTip="{Binding TmpPath}"/>
                     <Button Name="TmpPath_1" Click="Button_Click" Style="{StaticResource JobsBTN_OpenFolder}" Margin="5 0 0 0" />
                     <Button Name="TmpPath_2" Click="Button_Click" Style="{StaticResource JobsBTN_QuestionMark}" Margin="5 0 0 0" />
                     <Button Name="TmpPath_3" Click="Button_Click" Style="{StaticResource JobsBTN_ClearProcessVideoPath}" Margin="5 0 0 0" />

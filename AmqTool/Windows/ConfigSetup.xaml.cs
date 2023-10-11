@@ -207,7 +207,7 @@ namespace AmqTool
 
             if (left == "DefaultOutPath") return "This is the default path where rendered videos will be saved to. You can also define sub-folder paths in the program itself later while defining jobs. But they will all be the subpath of this path.";
 
-            if (left == "TmpPath") return "This is just the path where any temporary files of any kind will be saved. This folder will be wiped on every program close and open in case any leftover files don't get dleeted there.";
+            if (left == "TmpPath") return "This is just the path where any temporary files of any kind will be saved. This folder will be wiped on every program close and open in case any leftover files don't get dleeted there.\n\n[AGAIN, THIS TIME IN ALL CAPS: WARNING, THE CONTENTS OF THE FOLDER SET HERE WILL BE WIPED ON EVERY PROGRAM START AND SHUT DOWN, SO BE SURE TO SET IT TO SOME EMPTY DIRECTORY (FOLDER)!]";
 
             if (left == "VolumeCheckerPath") return "This is where the files will be downloaded in the volume mode if the user checks the checkbox to also download the file";
 

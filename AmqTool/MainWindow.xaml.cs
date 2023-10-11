@@ -91,7 +91,6 @@ namespace AmqTool
         public int extractAudio_done_num = 0;
         public int extractAudio_total = 0;
         #endregion
-
         public MainWindow()
         {
             // If there are errors when loading this in a fresh VS instance. Click on App.xaml and change the build action to ApplicationDefinition.
@@ -112,7 +111,7 @@ namespace AmqTool
             }
 
             InitializeComponent();
-
+            BuildingLBX.Visibility = Visibility.Collapsed;
 
             if (!canRun)
             {
@@ -765,7 +764,7 @@ namespace AmqTool
 
         private async Task<string[]> Mp4ToMkv()
         {
-            var files = getMultipleMediaPathFromOfd(filter: "*.mkv; *.ts");
+            var files = getMultipleMediaPathFromOfd(filter: "*.mkv; *.ts; *.webm");
             if (files == null) return null;
             mkvmp4_total += files.Length;
             foreach (var f in files)
@@ -1273,6 +1272,11 @@ namespace AmqTool
                             //j.DisableJob();
                             process2?.Kill();
                             process2?.Dispose();
+                            Dispatcher.Invoke(() =>
+                            {
+                                TaskbarItemInfo.ProgressState = TaskbarItemProgressState.Normal;
+                                TaskbarItemInfo.ProgressValue = 1;
+                            });
                             return false;
                         }
                         catch
@@ -2050,8 +2054,10 @@ namespace AmqTool
         void process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             //Console.WriteLine(e.Data + "\n");
-            //Console.WriteLine("AAA");
+            //Console.WriteLine("AAA");        
             if (e.Data == null) return;
+
+
             doOutput(e.Data, 2);
         }
 
@@ -2066,6 +2072,28 @@ namespace AmqTool
                         outputBox.Undo();
                     }
                 }
+
+                if (isProcessing && txt.Contains("bitrate"))
+                {
+                    int bitrate = int.TryParse(Regex.Match(txt, @"bitrate.*?(\d+).*?\w").Groups[1].Value, out int result) ? result : 0;
+                    int bitrate_limit = 6000;
+                    if (bitrate > bitrate_limit)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            TaskbarItemInfo.ProgressState = TaskbarItemProgressState.Error;
+                        });
+                    }
+                    if (bitrate <= bitrate_limit)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            TaskbarItemInfo.ProgressState = TaskbarItemProgressState.Paused;
+                        });
+                    }
+                }
+                
+
                 outputBox.AppendText(txt);
                 outputBox.AppendText("\u2028");
                 outputBox.ScrollToEnd();
@@ -2825,6 +2853,7 @@ namespace AmqTool
                 {
                     var _path2 = job.BuildFinalOutName("NO_RERENDER_AUDIO_OVER", 0, true);
                     var path2 = $"{GetOrFixUpOutDirForThisJob(job)}\\{_path2}";
+                    
                     var __ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", put_flac_on_vid(job.ShowTitleFullPath, job.AudioReplacementPath, path2)));
                     return;
                 }
@@ -2942,40 +2971,72 @@ namespace AmqTool
         {
             Clipboard.SetText(JobsOBS[MyIdxById(MyID(sender as Button))].CatboxLinkMP3);
         }
-        private async void JobsBTN_VolumeCheck_Click(object sender, RoutedEventArgs e)
+        private async void JobsBTN_VolumeCheck_Click(object sender, MouseButtonEventArgs e)
         {
-            var job = JobsOBS[MyIdxById(MyID(sender as Button))];
-            if (job.FromState == States.Process && !job.JobFinished)
+            try
             {
-                job.__GetVolumeBTN = false;
-                var volDataAudio = await get_volume_data_audio(job.AudioReplacementPath);
-                job.maxVolume_meanVolume = $"[{volDataAudio.Item1} | {volDataAudio.Item2}] dB";
-                job.__GetVolumeBTN = true;
-                return;
-            }
+                var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+                if (job.FromState == States.Process && !job.JobFinished)
+                {
+                    job.__GetVolumeBTN = false;
+                    var volDataAudio = await get_volume_data_audio(job.AudioReplacementPath);
+                    job.maxVolume_meanVolume = $"[{volDataAudio.Item1} | {volDataAudio.Item2}] dB";
+                    job.__GetVolumeBTN = true;
+                    return;
+                }
 
-            if (job.FromState == States.Clips && !job.JobFinished)
+                if (job.FromState == States.Clips && !job.JobFinished)
+                {
+                    job.__GetVolumeBTN = false;
+
+                    await UpdateVolumeValuesTextbox(job);
+
+                    job.__GetVolumeBTN = true;
+                    return;
+                }
+
+                // if we're checking already rendered files
+                var opts = new string[] { job.Rendered720File_VOL0, job.Rendered480File_VOL0, job.RenderedMP3File_VOL0 };
+                var file = opts.FirstOrDefault(File.Exists);
+                if (string.IsNullOrEmpty(file))
+                {
+                    var opt = string.Join("\n", opts);
+                    MessageBox.Show(Application.Current.MainWindow, $"{opt}\n\nAll renderd files have gone missing (been deleted)??", "Can't check volume", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                if(e.MiddleButton == MouseButtonState.Pressed && job.JobFinished && job.FromState == States.Process)
+                {
+                    //var _path2 = job.BuildFinalOutName("NO_RERENDER_AUDIO_OVER", 0, true);
+                    //var path2 = $"{GetOrFixUpOutDirForThisJob(job)}\\{_path2}";
+                    //var optsT = new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File };
+                    //var fileTMP  = optsT.FirstOrDefault(File.Exists);
+                    try
+                    {
+                        job.__GetVolumeBTN = false;
+                        var tmpF = $"{GetOrFixUpOutDirForThisJob(job)}\\{job.FinalOutFileName}";
+                        var __ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", put_flac_on_vid(tmpF, job.AudioReplacementPath, file)));
+                        job.maxVolume_meanVolume = await get_volume_data_db_only_video(file);
+                    }
+                    finally
+                    {
+                        job.__GetVolumeBTN = true;
+                    }
+                    
+                    return;
+                }
+                   
+                // await UpdateVolumeValuesTextbox(job, file, false);
+                job.maxVolume_meanVolume = await get_volume_data_db_only_video(file);
+            }
+            catch
             {
-                job.__GetVolumeBTN = false;
 
-                await UpdateVolumeValuesTextbox(job);
-
-                job.__GetVolumeBTN = true;
-                return;
             }
-
-            // if we're checking already rendered files
-            var opts = new string[] { job.Rendered720File_VOL0, job.Rendered480File_VOL0, job.RenderedMP3File_VOL0 };
-            var file = opts.FirstOrDefault(File.Exists);
-            if (string.IsNullOrEmpty(file))
+            finally
             {
-                var opt = string.Join("\n", opts);
-                MessageBox.Show(Application.Current.MainWindow, $"{opt}\n\nAll renderd files have gone missing (been deleted)??", "Can't check volume", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                UpdateJobsJsonFile();
             }
-
-            // await UpdateVolumeValuesTextbox(job, file, false);
-            job.maxVolume_meanVolume = await get_volume_data_db_only_video(file);
         }
 
         public async Task UpdateVolumeValuesTextbox(AmqJob job, string testFile = "", bool deleteTestFiles = true)
@@ -3078,7 +3139,7 @@ namespace AmqTool
             await Task.Run(async () =>
             {
                 while (!only_one_upl2)
-                    await Task.Delay(200);
+                    await Task.Delay(400);
             });
 
             await Task.Run(async () =>
@@ -3186,13 +3247,24 @@ namespace AmqTool
             Dispatcher.Invoke(() => UpdateJobsJsonFile());
         }
 
-        private async void JobsBTN_VolumeEdit_Click(object sender, RoutedEventArgs e)
+        private async void JobsBTN_VolumeEdit_Click(object sender, MouseButtonEventArgs e)
         {
             var job = JobsOBS[MyIdxById(MyID(sender as Button))];
             job.__EditVolumeValueOrangeBTN = false;
 
-            await ExecuteVolumeEdit(job);
+            if (e.MiddleButton == MouseButtonState.Pressed)
+            {
+                // todo: replace audio
+                await ExecuteVolumeEdit(job);
+            }
+
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                await ExecuteVolumeEdit(job);
+            }
+
             UpdateJobsJsonFile();
+
 
             job.__EditVolumeValueOrangeBTN = true;
         }
@@ -3286,7 +3358,12 @@ namespace AmqTool
             (sender as TextBlock).Text = txt;
         }
 
+        private void CheckBox_Tick(object sender, RoutedEventArgs e)
+        {
+            UpdateJobsJsonFile();
+        }
     }
+
 }
 
 

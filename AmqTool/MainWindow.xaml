@@ -172,7 +172,7 @@
 
                     <StackPanel Grid.Row="0" Grid.Column="1" x:Name="TR_JobsRelated_" Visibility="Visible">
                         <!--BUILDING BLOCKS-->
-                        <ListBox Visibility="Collapsed" Style="{StaticResource ListBoxJobs}">
+                        <ListBox x:Name="BuildingLBX" Visibility="Visible" Style="{StaticResource ListBoxJobs}">
                             <!--just here for style building-->
                             <StackPanel>
                                 <StackPanel Orientation="Vertical">
@@ -227,7 +227,11 @@
                         <!--VOLUME JOBS-->
                         <vj:VolumeJobs x:Name="VolumeJobs" Visibility="Visible" Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" MaxHeight="760px"></vj:VolumeJobs>
                         <!--REGULAR JOBS-->
-                        <ListBox Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" MaxHeight="760px" VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="JobsLV" ItemsSource="{Binding JobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
+                        
+                        <!--max height Should be 760px in non dayt ver and 610px in his ver-->
+                        <ListBox Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" 
+                                 MaxHeight="760px" 
+                                 VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="JobsLV" ItemsSource="{Binding JobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
@@ -238,6 +242,7 @@
                                                     <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="OutFileName_TextEdited" HorizontalAlignment="Left" Text="{Binding OutFileName, Mode=TwoWay}" ToolTip="Set output file name. (anything* but 'outFileNameHere' is allowed)" Style="{StaticResource Tbx_OutFile}" IsEnabled="{Binding __OutFileName}"/>
                                                     <TextBlock Style="{StaticResource JobName}" Opacity="0.2" Text=".webm|.mp3" FontSize="11px" Margin="3 6 0 0" />
                                                 </StackPanel>
+                                                <!--Commented out in dayt ver-->
                                                 <StackPanel>
                                                     <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" HorizontalAlignment="Left" Text="{Binding OutFileSubDirectory, Mode=TwoWay}" ToolTip="Set output sub folder file name. (anything but 'outFileSubDirectory' is allowed)" Style="{StaticResource Tbx_OutFile}" Opacity="0.6" IsEnabled="{Binding __OutFileSubDirectory}"/>
                                                 </StackPanel>
@@ -254,18 +259,18 @@
                                                 </StackPanel>
                                             </StackPanel>
                                             <StackPanel Orientation="Horizontal">
-                                                <CheckBox ToolTip="Render out and save in 720p (default)" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding Render720_ChkB, Mode=TwoWay}" IsHitTestVisible="{Binding __Render720}"/>
-                                                <CheckBox ToolTip="Render out and save in 480p" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding Render480_ChkB, Mode=TwoWay}" Margin="2 0 0 0" IsHitTestVisible="{Binding __Render480}"/>
-                                                <CheckBox ToolTip="Render out and save mp3 audio file" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding RenderMP3_ChkB, Mode=TwoWay}" Margin="2 0 0 0" IsHitTestVisible="{Binding __RenderMP3}"/>
+                                                <CheckBox ToolTip="Render out and save in 720p (default)" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding Render720_ChkB, Mode=TwoWay}" IsHitTestVisible="{Binding __Render720}" Checked="CheckBox_Tick" Unchecked="CheckBox_Tick"/>
+                                                <CheckBox ToolTip="Render out and save in 480p" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding Render480_ChkB, Mode=TwoWay}" Margin="2 0 0 0" IsHitTestVisible="{Binding __Render480}" Checked="CheckBox_Tick" Unchecked="CheckBox_Tick"/>
+                                                <CheckBox ToolTip="Render out and save mp3 audio file" Style="{StaticResource CheckboxJobs}" IsChecked="{Binding RenderMP3_ChkB, Mode=TwoWay}" Margin="2 0 0 0" IsHitTestVisible="{Binding __RenderMP3}" Checked="CheckBox_Tick" Unchecked="CheckBox_Tick"/>
                                                 <Button ToolTip="Load the settings to review or tweak them and add a new job later or somethig." Style="{StaticResource JobsBTN_Edit}" Click="JobsBTN_Edit_Click" Margin="3 0 0 0" IsEnabled="{Binding __EditBTN}"/>
                                                 <Button PreviewMouseDown="JobsBTN_Cancel_MouseDown" ToolTip="Remove this from the list (click with middle or right mouse button to also delete local files from this render)" Style="{StaticResource JobsBTN_Cancel}" Margin="5 0 0 0" IsEnabled="{Binding __CancelBTN}"/>
                                                 <Button Click="JobsBTN_CheckVideo_Click" ToolTip="Preview the video result (default: 720, for others click on the texts above the checkboxes)" Style="{StaticResource JobsBTN_CheckVideo}" IsEnabled="{Binding __Rendered720File_EyeBtn}" Margin="5 0 0 0"/>
-                                                <Button Click="JobsBTN_VolumeCheck_Click" ToolTip="Check the volume (priority 720 > 480 > mp3only) in process mode, BEFORE RENDERING, this will refresh the volume value of the audio in case you have re-rendered it in Vegas. (in process mode) (meanwhile in get clips mode, this will display the value if you had changed the volume with the slider, aka. if slider is at +3dB, this button will display what the volume would be if you did that change) -- AFTER RENDERING in both modes this will take the rendered file AT VOLUME CHANGE 0 and display the volume for that. Meaning that after rendering this will ignore the slider. If you want to make a volume edit with the slider, use the orange button instead, then after the process the volume values will be updated." Style="{StaticResource JobsBTN_VolumeCheck_Before}" IsEnabled="{Binding __GetVolumeBTN}"  Margin="5 0 0 0"/>
+                                                <Button MouseDown="JobsBTN_VolumeCheck_Click" ToolTip="Check the volume (priority 720 > 480 > mp3only) in process mode, BEFORE RENDERING, this will refresh the volume value of the audio in case you have re-rendered it in Vegas. (in process mode) (meanwhile in get clips mode, this will display the value if you had changed the volume with the slider, aka. if slider is at +3dB, this button will display what the volume would be if you did that change) -- AFTER RENDERING in both modes this will take the rendered file AT VOLUME CHANGE 0 and display the volume for that. Meaning that after rendering this will ignore the slider. If you want to make a volume edit with the slider, use the orange button instead, then after the process the volume values will be updated. NEW: AFTER RENDERING, YOU CAN MIDDLE CLICK THIS IN PROCESS MODE, AND IT PUT THE AUDIO OF THE RENDERED NAME ONTO THE FILE AGAIN" Style="{StaticResource JobsBTN_VolumeCheck_Before}" IsEnabled="{Binding __GetVolumeBTN}"  Margin="5 0 0 0"/>
 
                                                 <Button Click="JobsBTN_Upload_Click" Loaded="UPLButton_Loaded" ToolTip="Start upload to catbox (or copy all links for discord if it has been uploaded already)" Style="{StaticResource JobsBTN_Upload}" IsEnabled="{Binding __UploadToCatboxAllBTN}" Margin="5 0 0 0"/>
                                             </StackPanel>
                                             <StackPanel Orientation="Horizontal" >
-                                                <Button Click="JobsBTN_VolumeEdit_Click" ToolTip="Click to execute volume edit on the rendered files (will edit volume for 720, 480 and mp3 if they exist) The slider can be used before or after rendering, but the button will only be enable after rendering. Aka. you can try to guess the volume edit in advance, but not really suggested, I guess." Style="{StaticResource JobsBTN_VolumeEdit}" Margin="3 5 6 0" IsEnabled="{Binding __EditVolumeValueOrangeBTN}" />
+                                                <Button PreviewMouseDown="JobsBTN_VolumeEdit_Click" ToolTip="Click to execute volume edit on the rendered files (will edit volume for 720, 480 and mp3 if they exist) The slider can be used before or after rendering, but the button will only be enable after rendering. Aka. you can try to guess the volume edit in advance, but not really suggested, I guess." Style="{StaticResource JobsBTN_VolumeEdit}" Margin="3 5 6 0" IsEnabled="{Binding __EditVolumeValueOrangeBTN}" />
                                                 <Slider Style="{StaticResource VolumeEditSlider}" IsEnabled="{Binding __VolumeEditSlider}" ValueChanged="Slider_ValueChanged"
                                             Minimum="-20" Maximum="20" IsSnapToTickEnabled="True" TickFrequency="0.5" Value="{Binding VolumeChangeValue}"/>
                                                 <TextBlock Loaded="TextBlockSLID_Loaded" Opacity="0.8" Margin="3 4 0 0" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#FF45ADF5" Text="+0dB" Width="31px" Style="{StaticResource JobName}" FontSize="9px"/>
