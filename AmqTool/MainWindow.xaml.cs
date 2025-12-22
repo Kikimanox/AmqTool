@@ -734,7 +734,11 @@ namespace AmqTool
             {
                 var files = await Mp4ToMkv();
                 if (files == null) return;
+                TaskbarItemInfo.ProgressState = TaskbarItemProgressState.Normal;
+                TaskbarItemInfo.ProgressValue = 1;
                 var res = MessageBox.Show(Application.Current.MainWindow, string.Join("\n", files) + "\n\nDo you want to open the output folder?", "Done converting to MP4", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                TaskbarItemInfo.ProgressState = TaskbarItemProgressState.None;
+                TaskbarItemInfo.ProgressValue = 0;
                 if (res == MessageBoxResult.Yes)
                     Process.Start(config.conf.Folders.IntoVegasMp4Path);
                 return;
@@ -744,7 +748,11 @@ namespace AmqTool
             {
                 var files = await AnythingToAudio();
                 if (files == null) return;
+                TaskbarItemInfo.ProgressState = TaskbarItemProgressState.Normal;
+                TaskbarItemInfo.ProgressValue = 1;
                 var res = MessageBox.Show(Application.Current.MainWindow, string.Join("\n", files) + "\n\nDo you want to open the output folder?", "Done extracting audio", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                TaskbarItemInfo.ProgressState = TaskbarItemProgressState.None;
+                TaskbarItemInfo.ProgressValue = 0;
                 if (res == MessageBoxResult.Yes)
                     Process.Start(config.conf.Folders.IntoVegasMp4Path);
                 return;
@@ -787,7 +795,7 @@ namespace AmqTool
 
         private async Task<string[]> AnythingToAudio()
         {
-            var files = getMultipleMediaPathFromOfd(filter: "*.mkv; *.ts; *.mp4; *.webm; *.avi; *.m4a; *.mp3; *.flac");;
+            var files = getMultipleMediaPathFromOfd(filter: "*.mkv; *.ts; *.mp4; *.webm; *.avi; *.m4a; *.mp3; *.flac"); ;
             if (files == null) return null;
             extractAudio_total += files.Length;
             foreach (var f in files)
@@ -1499,9 +1507,9 @@ namespace AmqTool
                 }
                 if (state.CurrentState == States.Home)
                 {
-                    var res = MessageBox.Show(Application.Current.MainWindow, "Draggin in a file while on the home screen will send you to GET CLIPS mode.\n\n" +
-                        "Do you wish to continue?", "Drag event", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (res == MessageBoxResult.No) return;
+                    //var res = MessageBox.Show(Application.Current.MainWindow, "Dragging in a file while on the home screen will send you to GET CLIPS mode.\n\n" +
+                    //    "Do you wish to continue?", "Drag event", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    //if (res == MessageBoxResult.No) return;
                     enterGetClipsMode(files);
                     return;
                 }
@@ -2092,7 +2100,7 @@ namespace AmqTool
                         });
                     }
                 }
-                
+
 
                 outputBox.AppendText(txt);
                 outputBox.AppendText("\u2028");
@@ -2853,7 +2861,7 @@ namespace AmqTool
                 {
                     var _path2 = job.BuildFinalOutName("NO_RERENDER_AUDIO_OVER", 0, true);
                     var path2 = $"{GetOrFixUpOutDirForThisJob(job)}\\{_path2}";
-                    
+
                     var __ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", put_flac_on_vid(job.ShowTitleFullPath, job.AudioReplacementPath, path2)));
                     return;
                 }
@@ -3005,7 +3013,7 @@ namespace AmqTool
                     return;
                 }
 
-                if(e.MiddleButton == MouseButtonState.Pressed && job.JobFinished && job.FromState == States.Process)
+                if (e.MiddleButton == MouseButtonState.Pressed && job.JobFinished && job.FromState == States.Process)
                 {
                     //var _path2 = job.BuildFinalOutName("NO_RERENDER_AUDIO_OVER", 0, true);
                     //var path2 = $"{GetOrFixUpOutDirForThisJob(job)}\\{_path2}";
@@ -3022,10 +3030,10 @@ namespace AmqTool
                     {
                         job.__GetVolumeBTN = true;
                     }
-                    
+
                     return;
                 }
-                   
+
                 // await UpdateVolumeValuesTextbox(job, file, false);
                 job.maxVolume_meanVolume = await get_volume_data_db_only_video(file);
             }
@@ -3147,13 +3155,13 @@ namespace AmqTool
                 try
                 {
                     only_one_upl2 = false;
+
+
                     #region reee
                     using (HttpClient c = new HttpClient())
                     {
                         c.Timeout = TimeSpan.FromMinutes(10);
-                        c.BaseAddress = new Uri(@"https://catbox.moe");
-                        //client.Headers.Add("userhash", privateConfig.conf.catbox_userhash);
-                        //client.Headers.Add("reqtype", "fileupload");
+                        // c.BaseAddress = new Uri(@"https://litterbox.catbox.moe/resources/internals");  // Updated API endpoint
 
                         var upl = new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File };
                         for (int i = 0; i < upl.Length; i++)
@@ -3172,9 +3180,6 @@ namespace AmqTool
                                 await f.ReadAsync(media, 0, media.Length);
                             }
 
-                            //var requestContent = new MultipartFormDataContent();
-                            //var mediaContent = new ByteArrayContent(media);
-
                             string ext = "mp3";
                             if (i != 2)
                             {
@@ -3182,14 +3187,17 @@ namespace AmqTool
                             }
 
                             string t = ((int)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds).ToString();
-                            var formContent = new MultipartFormDataContent
-                            {
-                                {new StringContent("fileupload"), "reqtype"},
-                                {new StringContent(privateConfig.conf.catbox_userhash), "userhash" },
-                                {new StreamContent(new MemoryStream(media)), "fileToUpload",$"{t}_upload.{ext}"}
+
+                            var formContent = new MultipartFormDataContent{
+                                { new StringContent("fileupload"), "reqtype" },
+                                { new StringContent("72h"), "time" },
+                                { new ByteArrayContent(media), "fileToUpload", $"{t}.{ext}" }
                             };
 
-                            var res = await c.PostAsync("/user/api.php", formContent);
+                            // Explicitly set the content type of the file content
+                            formContent.Last().Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+                            var res = await c.PostAsync("https://litterbox.catbox.moe/resources/internals/api.php", formContent);
 
                             if (res.IsSuccessStatusCode)
                             {
@@ -3201,31 +3209,30 @@ namespace AmqTool
                             }
                             else
                             {
-                                MessageBox.Show(Application.Current.MainWindow, $"{await res.Content.ReadAsStringAsync()}\n\nFailed to upload: {upl[i]}", "Catbox upload failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                                await Dispatcher.Invoke(async () =>
+                                {
+                                    MessageBox.Show(Application.Current.MainWindow, $"{await res.Content.ReadAsStringAsync()}\n\nFailed to upload: {upl[i]}", "Litterbox upload failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                                });
                                 job.__UploadToCatboxAllBTN = true;
                             }
                         }
-                        // MessageBox.Show(Application.Current.MainWindow, "Upload to catbox has finished.", "Done", MessageBoxButton.YesNo, MessageBoxImage.Question);
                     }
                     #endregion
-
                 }
                 catch (Exception ex)
                 {
                     string extra = "";
                     if (ex.Message == "A task was canceled.") extra = "\n\nTimeout has occurred (10 minutes)";
-                    MessageBox.Show(Application.Current.MainWindow, $"{ex.Message}\n{ex.InnerException}{extra}", "Something went wrong when uploading to catbox", MessageBoxButton.OK, MessageBoxImage.Error);
-                    //job.__UploadToCatboxAllBTN = true;
-
+                    MessageBox.Show(Application.Current.MainWindow, $"{ex.Message}\n{ex.InnerException}{extra}", "Something went wrong when uploading to Litterbox", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 finally
                 {
-                    //job.__UploadToCatboxAllBTN = true; actually, don't
                     only_one_upl2 = true;
                     Dispatcher.Invoke(() => UpdateJobsJsonFile());
                     Dispatcher.Invoke(() => { btn.Style = Application.Current.Resources["JobsBTN_Upload"] as Style; });
                 }
             });
+
 
             // TODO: Put something like this recheck jobs
             bool tryAgain = false;

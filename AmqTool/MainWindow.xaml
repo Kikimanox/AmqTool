@@ -230,7 +230,7 @@
                         
                         <!--max height Should be 760px in non dayt ver and 610px in his ver-->
                         <ListBox Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" 
-                                 MaxHeight="760px" 
+                                 MaxHeight="610px" 
                                  VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="JobsLV" ItemsSource="{Binding JobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
@@ -242,10 +242,10 @@
                                                     <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="OutFileName_TextEdited" HorizontalAlignment="Left" Text="{Binding OutFileName, Mode=TwoWay}" ToolTip="Set output file name. (anything* but 'outFileNameHere' is allowed)" Style="{StaticResource Tbx_OutFile}" IsEnabled="{Binding __OutFileName}"/>
                                                     <TextBlock Style="{StaticResource JobName}" Opacity="0.2" Text=".webm|.mp3" FontSize="11px" Margin="3 6 0 0" />
                                                 </StackPanel>
-                                                <!--Commented out in dayt ver-->
-                                                <StackPanel>
+                                                <!--Commented out stack panel in dayt ver-->
+                                                <!--<StackPanel>
                                                     <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" HorizontalAlignment="Left" Text="{Binding OutFileSubDirectory, Mode=TwoWay}" ToolTip="Set output sub folder file name. (anything but 'outFileSubDirectory' is allowed)" Style="{StaticResource Tbx_OutFile}" Opacity="0.6" IsEnabled="{Binding __OutFileSubDirectory}"/>
-                                                </StackPanel>
+                                                </StackPanel>-->
                                                 <StackPanel Margin="0 4 0 0" Orientation="Horizontal">
                                                     <TextBlock PreviewMouseDown="TextBlock_MouseDown_Preview7" IsEnabled="{Binding __Rendered720File}" ToolTip="Click me to preview 720p version if exists/is rendered (or just click the green eye icon)" Margin="3 0 0 0" HorizontalAlignment="Left" Foreground="{Binding AboveChkbx7}" Text="720" Style="{StaticResource JobNameButHand}"/>
                                                     <TextBlock PreviewMouseDown="TextBlock_MouseDown_Preview4" IsEnabled="{Binding __Rendered480File}" ToolTip="Click me to preview 480p version if exists/is rendered" Margin="10 0 0 0" HorizontalAlignment="Left" Foreground="{Binding AboveChkbx4}" Text="480" Style="{StaticResource JobNameButHand}"/>
