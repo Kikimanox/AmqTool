@@ -48,8 +48,9 @@ using System.Windows;
 //      Build Number
 //      Revision
 //
-// You can specify all the values or you can default the Build and Revision Numbers
-// by using the '*' as shown below:
-// [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+// This is THE app version: shown in Help > About, compared against the GitHub release tag (vX.Y.Z)
+// by Help > Check for updates, and used by build\build-release.ps1 to name the release files.
+// Bump all three together before making a release.
+[assembly: AssemblyVersion("0.12.0.0")]
+[assembly: AssemblyFileVersion("0.12.0.0")]
+[assembly: AssemblyInformationalVersion("0.12.0")]

@@ -24,6 +24,9 @@
     <Window.TaskbarItemInfo>
         <TaskbarItemInfo Description="Some desc" ProgressValue="0" ProgressState="None"/>
     </Window.TaskbarItemInfo>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
     <Grid>
         <DockPanel>
             <Menu Panel.ZIndex="100" Name="_Top_Menu" DockPanel.Dock="Top" Background="{DynamicResource TopNavBar}">
@@ -47,6 +50,7 @@
                     <MenuItem Name="_Edit_All_Config" Header="_Edit all config" Click="MenuItem_Click"/>
                     <Separator/>
                     <MenuItem Name="_Dont_clear_textboxes" Header="_Don't clear textboxes on focus" Click="MenuItem_Click"/>
+                    <MenuItem Name="_Show_out_subfolder" Header="_Show output sub-folder field on jobs" ToolTip="Shows the 'outFileSubDirectory' box on every job (renders go into that sub-folder of the default output path)" Click="MenuItem_Click"/>
                     <Separator/>
                     <MenuItem Name="_AllSettings_MI" Header="_ffmpeg settings" Click="MenuItem_Click"/>
                 </MenuItem>
@@ -67,6 +71,9 @@
                     <MenuItem IsEnabled="False" Header="_Process" RenderOptions.BitmapScalingMode="Fant" Click="MenuItem_Click"></MenuItem>
                 </MenuItem>
                 <MenuItem Name="_About_Menu" Header="_Help">
+                    <MenuItem Name="_Check_Updates" Header="_Check for updates" Click="CheckForUpdates_Click"></MenuItem>
+                    <MenuItem Name="_Open_App_Folder" Header="_Open AmqTool folder (config files)" Click="MenuItem_Click"></MenuItem>
+                    <Separator/>
                     <MenuItem Name="_About_Info" Header="_About" Click="MenuItem_Click"></MenuItem>
                 </MenuItem>
             </Menu>
@@ -169,8 +176,8 @@
 
 
                     <!--Get clips Top Right [JOBS]-->
-
-                    <StackPanel Grid.Row="0" Grid.Column="1" x:Name="TR_JobsRelated_" Visibility="Visible">
+                    <!--A Grid (not a StackPanel) so the job lists fill the row at any window size; this replaced the fixed MaxHeights of the old separate "dayt ver" build-->
+                    <Grid Grid.Row="0" Grid.Column="1" x:Name="TR_JobsRelated_" Visibility="Visible">
                         <!--BUILDING BLOCKS-->
                         <ListBox x:Name="BuildingLBX" Visibility="Visible" Style="{StaticResource ListBoxJobs}">
                             <!--just here for style building-->
@@ -225,13 +232,9 @@
                         </ListBox>
 
                         <!--VOLUME JOBS-->
-                        <vj:VolumeJobs x:Name="VolumeJobs" Visibility="Visible" Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" MaxHeight="760px"></vj:VolumeJobs>
+                        <vj:VolumeJobs x:Name="VolumeJobs" Visibility="Collapsed"></vj:VolumeJobs>
                         <!--REGULAR JOBS-->
-                        
-                        <!--max height Should be 760px in non dayt ver and 610px in his ver-->
-                        <ListBox Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" 
-                                 MaxHeight="610px" 
-                                 VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="JobsLV" ItemsSource="{Binding JobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
+                        <ListBox VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="JobsLV" ItemsSource="{Binding JobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
@@ -242,10 +245,10 @@
                                                     <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" TextChanged="OutFileName_TextEdited" HorizontalAlignment="Left" Text="{Binding OutFileName, Mode=TwoWay}" ToolTip="Set output file name. (anything* but 'outFileNameHere' is allowed)" Style="{StaticResource Tbx_OutFile}" IsEnabled="{Binding __OutFileName}"/>
                                                     <TextBlock Style="{StaticResource JobName}" Opacity="0.2" Text=".webm|.mp3" FontSize="11px" Margin="3 6 0 0" />
                                                 </StackPanel>
-                                                <!--Commented out stack panel in dayt ver-->
-                                                <!--<StackPanel>
+                                                <!--Toggled with Edit > Show output sub-folder field on jobs-->
+                                                <StackPanel Visibility="{Binding ShowOutSubfolder, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}">
                                                     <TextBox LostFocus="TXT_LostFocus" GotFocus="TXT_GotFocus" HorizontalAlignment="Left" Text="{Binding OutFileSubDirectory, Mode=TwoWay}" ToolTip="Set output sub folder file name. (anything but 'outFileSubDirectory' is allowed)" Style="{StaticResource Tbx_OutFile}" Opacity="0.6" IsEnabled="{Binding __OutFileSubDirectory}"/>
-                                                </StackPanel>-->
+                                                </StackPanel>
                                                 <StackPanel Margin="0 4 0 0" Orientation="Horizontal">
                                                     <TextBlock PreviewMouseDown="TextBlock_MouseDown_Preview7" IsEnabled="{Binding __Rendered720File}" ToolTip="Click me to preview 720p version if exists/is rendered (or just click the green eye icon)" Margin="3 0 0 0" HorizontalAlignment="Left" Foreground="{Binding AboveChkbx7}" Text="720" Style="{StaticResource JobNameButHand}"/>
                                                     <TextBlock PreviewMouseDown="TextBlock_MouseDown_Preview4" IsEnabled="{Binding __Rendered480File}" ToolTip="Click me to preview 480p version if exists/is rendered" Margin="10 0 0 0" HorizontalAlignment="Left" Foreground="{Binding AboveChkbx4}" Text="480" Style="{StaticResource JobNameButHand}"/>
@@ -290,7 +293,7 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                    </StackPanel>
+                    </Grid>
 
                     <!--Get clips Bottom Right [STARE JOBS BTN]-->
                     <StackPanel Orientation="Vertical" x:Name="BR_JobsRelated_" Grid.Row="1" Grid.Column="1" Visibility="Visible">

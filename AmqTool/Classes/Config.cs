@@ -251,6 +251,13 @@ namespace AmqTool
 
         [JsonProperty("Use_2_Pass_Encoding")]
         public bool Use2PassEnc { get; set; }
+
+        // Older config.json files don't have the ones below, so the initializers are the defaults
+        [JsonProperty("Show_out_subfolder_textbox")]
+        public bool ShowOutSubfolderTextbox { get; set; } = true;
+
+        [JsonProperty("Check_for_updates_on_startup")]
+        public bool CheckForUpdatesOnStartup { get; set; } = true;
     }
 
     public partial class ConfigDef

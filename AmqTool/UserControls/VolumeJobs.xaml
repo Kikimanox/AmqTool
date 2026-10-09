@@ -7,22 +7,23 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="250">
     <Grid Background="#1e1e1e" Name="MainGrid">
-        <StackPanel VerticalAlignment="Top">
-            <StackPanel Margin="7 7 0 0" Orientation="Horizontal">
+        <!--DockPanel so the list (last child) fills whatever height is left-->
+        <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Top" Margin="7 7 0 0" Orientation="Horizontal">
                 <TextBox Name="Tbx" LostFocus="Tbx_LostFocus" GotFocus="Tbx_GotFocus" Style="{StaticResource Tbx_Edi4}" MinWidth="200px" MaxWidth="200px" Text="" ToolTip="todo"/>
                 <Button IsDefault="{Binding ElementName=Tbx, Path=IsFocused}" Name="AddBTN" Click="AddBTN_Click" Style="{DynamicResource JobsBTN_Plus}" Margin="5 0 0 0" />
                 <Button IsDefault="{Binding ElementName=DlTbx, Path=IsFocused}" Name="AddBTN2_LateNightCodingPog" Visibility="Visible" Width="0" Height="0" Click="AddBTN_Click" Style="{DynamicResource JobsBTN_Plus}" Margin="0" />
             </StackPanel>
-            <StackPanel Margin="7 0 0 0" Orientation="Horizontal">
+            <StackPanel DockPanel.Dock="Top" Margin="7 0 0 0" Orientation="Horizontal">
                 <Button Click="FromFolder_Click" ToolTip="Test local files, may also select multiple in the open file dialogue" Name="FromFolder" Style="{StaticResource JobsBTN_OpenFolderPlus}" Margin="0 5 0 0" />
                 <TextBlock Margin="5 4 0 0" Text="Load" Style="{StaticResource ConfigSetupWindow_WarnTXT}"/>
                 <CheckBox Name="Chkbox" Checked="Chk_Checked" Unchecked="Chk_Unchecked" Style="{StaticResource CheckboxJobs}" Margin="10 4 0 0" />
                 <TextBox GotFocus="Tbx2_GotFocus" LostFocus="Tbx2_LostFocus" x:Name="DlTbx" Text="" Style="{StaticResource Tbx_OutFile}" Margin="3 3 0 0" IsEnabled="{Binding ElementName=Chkbox, Path=IsChecked}"/>
             </StackPanel>
-            <Separator Margin="0 7 0 0"/>
+            <Separator DockPanel.Dock="Top" Margin="0 7 0 0"/>
 
             <!--BUILDING BLOCKS-->
-            <ListBox Visibility="Collapsed" Style="{StaticResource ListBoxJobs}">
+            <ListBox DockPanel.Dock="Top" Visibility="Collapsed" Style="{StaticResource ListBoxJobs}">
                 <!--just here for style building-->
                 <StackPanel>
                     <StackPanel>
@@ -55,7 +56,7 @@
             </ListBox>
 
             <!--VOLUME JOBS-->
-            <ListBox Height="{Binding Path=ActualHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Grid}}}" MaxHeight="650px" VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="VolumeJobsLV" ItemsSource="{Binding VolumeJobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
+            <ListBox VirtualizingStackPanel.ScrollUnit ="Pixel" x:Name="VolumeJobsLV" ItemsSource="{Binding VolumeJobsOBS}" Style="{StaticResource ListBoxJobs}" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel>
@@ -92,7 +93,7 @@
             </ListBox>
 
 
-        </StackPanel>
+        </DockPanel>
 
     </Grid>
 </UserControl>

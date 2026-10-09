@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AmqTool", "AmqTool\AmqTool.csproj", "{6AE48239-BEDC-4F4F-87E7-D56EE23E9C8D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mpv.Net.Wpf", "AmqTool\Mpv.Net.Wpf\Mpv.Net.Wpf.csproj", "{31B8702C-8E7F-4E26-A78E-10A33D211DB6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mpv.Net.Wpf", "AmqTool\Mpv.Net.Wpf\Mpv.Net.Wpf.csproj", "{31B8702C-8E7F-4E26-A78E-10A33D211DB6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

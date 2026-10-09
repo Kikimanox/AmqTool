@@ -7,7 +7,9 @@
     "left": 522,
     "last_started": "-1",
     "_Dont_clear_textboxes": false,
-    "Use_2_Pass_Encoding": false
+    "Use_2_Pass_Encoding": false,
+    "Show_out_subfolder_textbox": true,
+    "Check_for_updates_on_startup": true
   },
   "folders": {
     "last_folder_picker_path": "",

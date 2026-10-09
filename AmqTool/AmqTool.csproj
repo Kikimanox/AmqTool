@@ -81,6 +81,8 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xaml">
       <RequiredTargetFramework>4.0</RequiredTargetFramework>
@@ -97,6 +99,8 @@
     </ApplicationDefinition>
     <Compile Include="Classes\AmqJob.cs" />
     <Compile Include="Classes\MyLocker.cs" />
+    <Compile Include="Classes\OldInstallImport.cs" />
+    <Compile Include="Classes\Updater.cs" />
     <Compile Include="Classes\VolumeJob.cs" />
     <Compile Include="IInputStream.cs" />
     <Compile Include="UserControls\VolumeJobs.xaml.cs">

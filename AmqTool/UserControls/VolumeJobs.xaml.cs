@@ -527,9 +527,11 @@ namespace AmqTool.UserControls
                         var formContent = new MultipartFormDataContent
                         {
                             {new StringContent("fileupload"), "reqtype"},
-                            {new StringContent(MainWindow.privateConfig.conf.catbox_userhash), "userhash" },
                             {new StreamContent(new MemoryStream(media)), "fileToUpload",$"{t}_upload.{ext}"}
                         };
+                        // the hash is optional now, without one catbox does an anonymous upload
+                        if (!string.IsNullOrEmpty(MainWindow.privateConfig.conf.catbox_userhash))
+                            formContent.Add(new StringContent(MainWindow.privateConfig.conf.catbox_userhash), "userhash");
                         var res = await c.PostAsync("/user/api.php", formContent);
 
                         if (res.IsSuccessStatusCode)

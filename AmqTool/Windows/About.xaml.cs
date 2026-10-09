@@ -23,6 +23,7 @@ namespace AmqTool
         public About()
         {
             InitializeComponent();
+            VersionText.Text = $"AmqTool v{Updater.CurrentVersion}";
         }
 
         private void TextBlock_MouseDown(object sender, MouseButtonEventArgs e)

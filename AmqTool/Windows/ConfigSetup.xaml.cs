@@ -71,6 +71,7 @@ namespace AmqTool
             TmpPath = MainWindow.config.conf.Folders.TmpPath;
             VolumeCheckerPath = MainWindow.config.conf.Folders.VolumeCheckerPath;
             FfmpegPath = MainWindow.config.conf.Execs[0].Path;
+            if (!File.Exists(FfmpegPath)) FfmpegPath = FindOnPath("ffmpeg.exe") ?? FfmpegPath;
             PowerShellPath = MainWindow.config.conf.Execs[2].Path;
 
             FromVegasPath = MainWindow.config.conf.Folders.FromVegasFlacPath;
@@ -113,7 +114,8 @@ namespace AmqTool
                     var pbx = sender as PasswordBox;
                     var tb = TBXSP.FindName($"CatboxHash_4") as TextBlock;
                     if (tb == null) return;
-                    if (pbx.Password.Length < 20) tb.Text = "prolly invalid";
+                    if (pbx.Password.Length == 0) tb.Text = "optional";
+                    else if (pbx.Password.Length < 20) tb.Text = "prolly wrong";
                     else tb.Text = "filled";
                     CatboxHash = pbx.Password;
                 }
@@ -141,7 +143,14 @@ namespace AmqTool
             var left = btn.Name.Split('_')[0];
             var right = btn.Name.Split('_')[1];
 
-            if (right == "1")
+            if (right == "1" && (left == "FfmpegPath" || left == "PowerShellPath"))
+            {
+                // these want the .exe itself, not a folder
+                var ofd = new Microsoft.Win32.OpenFileDialog { Title = "Select the .exe", Filter = "Programs (*.exe)|*.exe" };
+                if (ofd.ShowDialog() == true)
+                    (TBXSP.FindName($"{left}_0") as TextBox).Text = ofd.FileName;
+            }
+            else if (right == "1")
             {
                 var folder = MainWindow.getFolderPathFromOfd(MainWindow.config.conf.Folders.LastFolderPickerPath);
                 if (Directory.Exists(folder))
@@ -171,10 +180,13 @@ namespace AmqTool
         {
             foreach (var sp in TBXSP.Children.OfType<StackPanel>())
             {
+                // The catbox hash row has a PasswordBox instead of a TextBox and is optional (litterbox uploads don't need it),
+                // collapsed rows (powershell) aren't shown so they can't be fixed by the user either
+                var tbx = sp.Children.OfType<TextBox>().FirstOrDefault();
+                if (tbx == null || sp.Visibility != Visibility.Visible) continue;
                 var tb = sp.Children.OfType<TextBlock>().FirstOrDefault();
                 if (tb.Text.Contains("invalid") || tb.Text.Contains("missing"))
                 {
-                    var tbx = sp.Children.OfType<TextBox>().FirstOrDefault();
                     var n = tbx.Name.Split('_').First();
                     var t = tbx.Text;
                     MessageBox.Show($"Text: {t}\nAt: {n}\n\nInvalid value in text box, can not save. Please edit all invalid text boxes then try again.", "Can not save this config", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -213,13 +225,27 @@ namespace AmqTool
 
             if (left == "BgsPath") return "This is the path where you will place various image files. Out of those on every program startup a random one will be chosen as the background. If you only want to have one then just place one picture in the folder.";
 
-            if (left == "CatboxHash") return "Input your catbox hash here. If you don't know where to find it, go visit: https://catbox.moe/user/manage.php";
+            if (left == "CatboxHash") return "Optional. Uploads from the jobs list go to litterbox and don't need this. It's only used when uploading from Volume mode, so those files land in your catbox.moe account (without it they're uploaded anonymously). Your userhash is shown at: https://catbox.moe/user/manage.php";
 
-            if (left == "FfmpegPath") return "Set this path to the ffmpeg executable file.";
+            if (left == "FfmpegPath") return "Set this path to the ffmpeg executable file (ffmpeg.exe).\n\nDon't have ffmpeg? Open a terminal and run:  winget install Gyan.FFmpeg\nthen reopen AmqTool, it picks up ffmpeg from PATH by itself.";
 
             if (left == "PowerShellPath") return "Set this path to the powershell executable file.";
 
             return "Missing help";
+        }
+
+        private static string FindOnPath(string exe)
+        {
+            foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';'))
+            {
+                try
+                {
+                    var p = System.IO.Path.Combine(dir.Trim().Trim('"'), exe);
+                    if (File.Exists(p)) return p;
+                }
+                catch { } // junk PATH entries
+            }
+            return null;
         }
 
         private void CatboxHash_0_PasswordChanged(object sender, RoutedEventArgs e)

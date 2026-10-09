@@ -86,6 +86,13 @@ namespace AmqTool
         private double progBar_Jobs_Val = 0;
         public double ProgBar_Jobs_Val { get => progBar_Jobs_Val; set { progBar_Jobs_Val = value; Changed(); } }
 
+        // Bound from the jobs DataTemplate (the out sub-folder textbox), toggled in the Edit menu
+        public bool ShowOutSubfolder
+        {
+            get => config?.conf.WindowProps.ShowOutSubfolderTextbox ?? true;
+            set { config.conf.WindowProps.ShowOutSubfolderTextbox = value; config.UpdateConfig(); Changed(); }
+        }
+
         public int mkvmp4_done_num = 0;
         public int mkvmp4_total = 0;
         public int extractAudio_done_num = 0;
@@ -97,6 +104,7 @@ namespace AmqTool
 
             try
             {
+                OldInstallImport.OfferIfFirstRun();
                 privateConfig = new PrivateConfig("private_config.json");
                 config = new Config("config.json");
                 if (config.conf.WindowProps.LastStarted == "-1")
@@ -185,8 +193,10 @@ namespace AmqTool
             setupAdvancedCbx();
             setupKeybinds();
             ToggleOnTextBoxClearing(updateConfFile: false);
+            ToggleOutSubfolderField(updateConfFile: false);
 
             CLIPS_START_JOBS.Content = config.conf.WindowProps.Use2PassEnc ? "Start jobs\n(2 pass)" : "Start jobs";
+            CheckForUpdatesInBackground();
 
             //_AdvCbx.ItemsSource = advExtensions;
             //_AdvCbx.SelectedIndex = 0;
@@ -254,6 +264,16 @@ namespace AmqTool
                 _Dont_clear_textboxes.Icon = null;
             if (updateConfFile)
                 config.UpdateConfig();
+        }
+
+        private void ToggleOutSubfolderField(bool updateConfFile)
+        {
+            if (updateConfFile)
+                ShowOutSubfolder = !ShowOutSubfolder;
+            if (ShowOutSubfolder)
+                _Show_out_subfolder.Icon = new Image { Source = new BitmapImage(new Uri("Assets/Icons/checkmark.png", UriKind.Relative)) };
+            else
+                _Show_out_subfolder.Icon = null;
         }
 
         private void SetIntoVegasMp4Path()
@@ -345,7 +365,93 @@ namespace AmqTool
         {
             Application.Current.Shutdown();
         }
-        #endregion        
+        #endregion
+
+        #region Updates
+        /// <summary>Silent check on startup, only changes the Help menu (and status bar) if there is a newer release</summary>
+        private async void CheckForUpdatesInBackground()
+        {
+            if (!config.conf.WindowProps.CheckForUpdatesOnStartup) return;
+            try
+            {
+                var latest = await Updater.GetLatestReleaseAsync();
+                if (!latest.IsNewer) return;
+                _About_Menu.Header = "_Help (update available!)";
+                _About_Menu.FontWeight = FontWeights.Bold;
+                _Check_Updates.Header = $"_Update to v{latest.Version}";
+                SetStatusBarText($"AmqTool v{latest.Version} is available, see Help > Update", SB.left);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Update check failed: {ex.Message}"); // offline, no releases yet etc. Not worth a popup
+            }
+        }
+
+        private async void CheckForUpdates_Click(object sender, RoutedEventArgs e)
+        {
+            Updater.ReleaseInfo latest;
+            try
+            {
+                SetStatusBarText("Checking for updates...", SB.left);
+                latest = await Updater.GetLatestReleaseAsync();
+            }
+            catch (Exception ex)
+            {
+                SetStatusBarText("", SB.left);
+                var r = MessageBox.Show(this, $"Couldn't check for updates:\n\n{ex.Message}\n\nOpen the releases page in your browser instead?", "Check for updates", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (r == MessageBoxResult.Yes) Process.Start(Updater.ReleasesPageUrl);
+                return;
+            }
+            SetStatusBarText("", SB.left);
+
+            if (!latest.IsNewer)
+            {
+                MessageBox.Show(this, $"You have the latest version (v{Updater.CurrentVersion}).", "No updates", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var notes = latest.Notes.Length > 1500 ? latest.Notes.Substring(0, 1500) + "..." : latest.Notes;
+            var header = $"AmqTool v{latest.Version} is available (you have v{Updater.CurrentVersion}).\n\n{notes}";
+
+            if (latest.ZipUrl == null || !Updater.CanWriteToAppFolder())
+            {
+                var why = latest.ZipUrl == null
+                    ? "This release can't be installed automatically."
+                    : $"AmqTool can't update itself because it isn't allowed to write to its own folder:\n{AppDomain.CurrentDomain.BaseDirectory}\n\nInstall it with the new AmqTool-Setup exe instead, that installs to a folder where updating works (your settings can be imported on first start).";
+                var r = MessageBox.Show(this, $"{header}\n\n{why}\n\nOpen the download page?", "Update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (r == MessageBoxResult.Yes) Process.Start(latest.PageUrl);
+                return;
+            }
+
+            var res = MessageBox.Show(this, $"{header}\n\nUpdate now? AmqTool will close, update and open again by itself. Your settings and jobs are kept.", "Update available", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (res != MessageBoxResult.Yes) return;
+            if (isProcessing)
+            {
+                MessageBox.Show(this, "Jobs are rendering right now. Update once they're done (or stopped).", "Update", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                _Top_Menu.IsEnabled = false;
+                var progress = new Progress<int>(p =>
+                {
+                    SetStatusBarText($"Downloading update... {p}%", SB.left);
+                    TaskbarItemInfo.ProgressState = TaskbarItemProgressState.Normal;
+                    TaskbarItemInfo.ProgressValue = p / 100.0;
+                });
+                await Updater.DownloadAndStartUpdateAsync(latest, progress);
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                _Top_Menu.IsEnabled = true;
+                SetStatusBarText("", SB.left);
+                TaskbarItemInfo.ProgressState = TaskbarItemProgressState.None;
+                MessageBox.Show(this, $"Update failed:\n\n{ex.Message}\n\nYou can download it manually from:\n{latest.PageUrl}", "Update failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        #endregion
 
         #region GeneralIOFunc
         private static string[] GetFilesFrom(string searchFolder, string[] filters, bool isRecursive = false)
@@ -653,6 +759,7 @@ namespace AmqTool
             if (menuItem.Header.ToString() == "_Into vegas mp4 path") SetIntoVegasMp4Path();
             if (menuItem.Header.ToString() == "_Default render output path") SetDefaultOutPath();
             if (menuItem.Header.ToString() == "_Don't clear textboxes on focus") ToggleOnTextBoxClearing(true);
+            if (menuItem.Header.ToString() == "_Show output sub-folder field on jobs") ToggleOutSubfolderField(true);
             if (menuItem.Header.ToString() == "_ffmpeg settings")
             {
                 var savePressed = new editffmpegstuff().ShowDialog() ?? false;
@@ -667,6 +774,7 @@ namespace AmqTool
 
             // Help
             if (menuItem.Header.ToString() == "_About") new About().ShowDialog();
+            if (menuItem.Header.ToString() == "_Open AmqTool folder (config files)") Process.Start(AppDomain.CurrentDomain.BaseDirectory);
 
             // Context menu on image in organizing mode
             //if (menuItem.Header.ToString() == "_Copy Image") copyImageToClipboard();
@@ -3188,14 +3296,13 @@ namespace AmqTool
 
                             string t = ((int)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds).ToString();
 
-                            var formContent = new MultipartFormDataContent{
-                                { new StringContent("fileupload"), "reqtype" },
-                                { new StringContent("72h"), "time" },
-                                { new ByteArrayContent(media), "fileToUpload", $"{t}.{ext}" }
-                            };
+                            var formContent = new MultipartFormDataContent();
+                            formContent.Add(new StringContent("fileupload"), "reqtype");
+                            formContent.Add(new StringContent("72h"), "time");
 
-                            // Explicitly set the content type of the file content
-                            formContent.Last().Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                            var fileContent = new ByteArrayContent(media);
+                            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                            formContent.Add(fileContent, "fileToUpload", $"{t}.{ext}");
 
                             var res = await c.PostAsync("https://litterbox.catbox.moe/resources/internals/api.php", formContent);
 

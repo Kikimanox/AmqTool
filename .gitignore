@@ -342,3 +342,4 @@ healthchecksdb
 
 /AmqTool/TestingOutPath
 /AmqTool/private_config.json
+/dist/
