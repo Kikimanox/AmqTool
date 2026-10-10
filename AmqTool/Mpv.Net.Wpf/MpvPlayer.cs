@@ -239,6 +239,7 @@ namespace Mpv.Net.Wpf
 
         public void MoveBySeconds(int m)
         {
+            if (_player == null) return;
             var newTime = _player.Position + TimeSpan.FromSeconds(m);
             if (newTime.TotalMilliseconds > _player.Duration.TotalMilliseconds) return;
             if (newTime.TotalMilliseconds < TimeSpan.FromSeconds(0).TotalMilliseconds) return;
@@ -247,6 +248,7 @@ namespace Mpv.Net.Wpf
 
         public void ChangeVolume(int change)
         {
+            if (_player == null) return;
             if (change > 0 && _player.Volume == 100) return;
             if (change < 0 && _player.Volume == 0) return;
             var newVol = _player.Volume + change;
@@ -292,6 +294,7 @@ namespace Mpv.Net.Wpf
 
         public string GetPosition()
         {
+            if (_player == null) return "00:00:00";
             var str = _player.Position.ToString().TrimEnd('0');
             if (!_player.Position.ToString().Contains(".")) str = _player.Position.ToString();
             return str;
@@ -440,7 +443,14 @@ namespace Mpv.Net.Wpf
 
         private void CreateMenu(Button target, List<long> ids, List<string> txts, Action<object, RoutedEventArgs> clickAction)
         {
-            if (ids.Count < 1) return;
+            // exactly one click handler per button (this used to add another one on every file load)
+            target.Click -= OpenButtonContextMenu;
+            target.Click += OpenButtonContextMenu;
+            if (ids.Count < 1)
+            {
+                target.ContextMenu = null; // no tracks in this file, don't keep offering the previous file's ones
+                return;
+            }
             ContextMenu menu = new ContextMenu();
             for (int i = 0; i < ids.Count; i++)
             {
@@ -458,10 +468,11 @@ namespace Mpv.Net.Wpf
                 menu.Items.Add(menuitem);
             }
             target.ContextMenu = menu;
-            target.Click += (sender, e) =>
-            {
-                target.ContextMenu.IsOpen = true;
-            };
+        }
+
+        private static void OpenButtonContextMenu(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button b && b.ContextMenu != null) b.ContextMenu.IsOpen = true;
         }
 
         private void GetChapters()
@@ -510,9 +521,10 @@ namespace Mpv.Net.Wpf
             Playpause_Click(null, null);
         }
 
+        // _player is null when mpv-1.dll couldn't be loaded; the rest of the app should still work then
         public void PauseIfPlaying()
         {
-            if (_player.IsPlaying)
+            if (_player != null && _player.IsPlaying)
             {
                 PlayPause();
             }
@@ -520,7 +532,7 @@ namespace Mpv.Net.Wpf
 
         public void PlayIfPaused()
         {
-            if (!_player.IsPlaying)
+            if (_player != null && !_player.IsPlaying)
             {
                 PlayPause();
             }

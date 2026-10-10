@@ -113,8 +113,9 @@ namespace AmqTool
             if (!Keyboard.IsKeyDown(Key.LeftAlt))
                 if (keysDown.Contains(Key.LeftAlt))
                     keysDown.Remove(Key.LeftAlt);
-            Key K = e.Key;
-            if (e.Key.ToString() == "System") K = Key.LeftAlt;
+            // while Alt is held WPF reports Key.System and puts the real key in SystemKey (LeftAlt itself, or e.g. S for Alt+S)
+            Key K = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (K == Key.RightAlt) K = Key.LeftAlt;
             if (keysDown.Contains(K)) return;
             if (!isModifierKey(K))
                 removeNonModifiers();
@@ -125,7 +126,7 @@ namespace AmqTool
         private void Window_KeyUp(object sender, KeyEventArgs e)
         {
             if (selected == null) return;
-            handleKeys(false, e.Key);
+            handleKeys(false, e.Key == Key.System ? e.SystemKey : e.Key);
         }
 
         private void removeNonModifiers()

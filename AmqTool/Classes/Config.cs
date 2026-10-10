@@ -70,6 +70,7 @@ namespace AmqTool
                     json = File.ReadAllText("config.template");
                 }
                 conf = ConfigDef.FromJson(json);
+                MigrateOldDefaults();
                 if (conf.WindowProps.LastStarted == "-1")
                 {
                     var dir = $"{AppDomain.CurrentDomain.BaseDirectory}tmp";
@@ -77,6 +78,20 @@ namespace AmqTool
                     conf.Folders.TmpPath = dir;
                 }
             }
+        }
+
+        /// <summary>
+        /// Fixes for ffmpeg commands that were shipped broken. Only an untouched old default gets replaced,
+        /// commands someone edited in Edit > ffmpeg settings are left alone. (Saved with the next config save.)
+        /// </summary>
+        private void MigrateOldDefaults()
+        {
+            // "Audio from input" (Extract audio, process mode mp3): "-map a" takes every audio track, which a .flac can't
+            // hold, so extracting from dual audio (JP + EN) files failed. Take the first track like the other commands do.
+            const string oldAudioFromInput = "-hide_banner -i \"[:in]\" -b:a 320k -ac 2 -map a \"[:out]\" -y";
+            var usage = conf.Extensions != null && conf.Extensions.Length > 3 ? conf.Extensions[3].Usage : null;
+            if (usage != null && usage.Length > 0 && usage[0].Call == oldAudioFromInput)
+                usage[0].Call = oldAudioFromInput.Replace("-map a ", "-map 0:a:0 ");
         }
 
         public void SaveUponClosing()

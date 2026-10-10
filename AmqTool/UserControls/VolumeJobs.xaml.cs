@@ -87,12 +87,15 @@ namespace AmqTool.UserControls
                             bool isDownloaded = false;
                             client.DownloadFileCompleted += (s, ee) => isDownloaded = true;
                             client.DownloadProgressChanged += (s, ee) => UpdateDlProgress(ee, id);
-                            await Task.Run(() => { try { client.DownloadFileAsync(new Uri(uri), path); } catch { } });
+                            await Task.Run(() => { try { client.DownloadFileAsync(new Uri(uri), path); } catch { isDownloaded = true; } }); // could not even start: don't wait forever
 
                             await Task.Run(async () => { while (!isDownloaded) { await Task.Delay(250); } });
 
                             if (!File.Exists(path))
+                            {
+                                RemoveJob(id); // the "Downloading/Measuring" placeholder would stay there forever
                                 continue; // failed to download
+                            }
                             toCheck = path;
                         }
                     }
@@ -150,7 +153,7 @@ namespace AmqTool.UserControls
             if (Chkbox.IsChecked == true)
             {
                 toCheck = DlTbx.Text;
-                if (toCheck == DlFile && toCheck == "")
+                if (toCheck == DlFile || toCheck == "")
                 {
                     MessageBox.Show($"Please enter file name where it says \"{DlFile}\"", "Missing file name", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
@@ -185,15 +188,13 @@ namespace AmqTool.UserControls
                     bool isDownloaded = false;
                     client.DownloadFileCompleted += (s, ee) => isDownloaded = true;
                     client.DownloadProgressChanged += (s, ee) => UpdateDlProgress(ee, id);
-                    await Task.Run(() => { try { client.DownloadFileAsync(new Uri(uri), path); } catch { } });
+                    await Task.Run(() => { try { client.DownloadFileAsync(new Uri(uri), path); } catch { isDownloaded = true; } }); // could not even start: don't wait forever
 
                     await Task.Run(async () => { while (!isDownloaded) { await Task.Delay(250); } });
 
-                    //var j = VolumeJobsOBS.Where(x => x.Id == id).FirstOrDefault();
-                    //if (j != null) VolumeJobsOBS.Remove(j);
-
                     if (!File.Exists(path))
                     {
+                        RemoveJob(id); // the "Downloading/Measuring" placeholder would stay there forever
                         MessageBox.Show($"Url: {uri}\nPath:{path}\n\nFailed to download!");
                         return;
                     }
@@ -339,6 +340,12 @@ namespace AmqTool.UserControls
             var jsonString = JsonConvert.SerializeObject(VolumeJobsOBS);
             File.WriteAllText("volume_jobs.json", jsonString);
         }
+        private void RemoveJob(int id)
+        {
+            var j = VolumeJobsOBS.FirstOrDefault(x => x.Id == id);
+            if (j != null) VolumeJobsOBS.Remove(j);
+        }
+
         public void ClearJobsOBS()
         {
             VolumeJobsOBS.Clear();
@@ -571,7 +578,12 @@ namespace AmqTool.UserControls
             var job = VolumeJobsOBS[MyIdxById(MyID(sender as Button))];
             (sender as Button).IsEnabled = false;
 
-            await ExecuteVolumeEdit(job);
+            if (await ExecuteVolumeEdit(job))
+            {
+                // back to "not uploaded" so the new file can be uploaded (instead of copying the old file's link)
+                var uploadBtn = MainWindow.FindInPanels<Button>(GetTopSPParent((sender as Button).Parent as FrameworkElement), b => (b.Tag as string) == "upload");
+                if (uploadBtn != null) uploadBtn.Style = Application.Current.Resources["JobsBTN_Upload"] as Style;
+            }
             UpdateJobsJsonFile();
 
             (sender as Button).IsEnabled = true;
@@ -599,9 +611,11 @@ namespace AmqTool.UserControls
         #endregion
 
 
-        private async Task ExecuteVolumeEdit(VolumeJob job)
+        /// <returns>true if the upload link had to be dropped (it was for the file before this volume edit)</returns>
+        private async Task<bool> ExecuteVolumeEdit(VolumeJob job)
         {
             var v = job.VolumeChangeValue;
+            var before = job.SavedFilePathEdited;
             if (File.Exists(job.SavedFilePathEdited) && job.SavedFilePath != job.SavedFilePathEdited)
             {
                 File.Delete(job.SavedFilePathEdited);
@@ -634,6 +648,14 @@ namespace AmqTool.UserControls
             else
                 job.MaxVolume_meanVolume = await MainWindow.get_volume_data_db_only_video(outPath);
 
+            // a different file now, so the uploaded link is the old volume
+            if (outPath != before && !string.IsNullOrEmpty(job.CatboxLinkNEW))
+            {
+                job.CatboxLinkNEW = "";
+                job.__UploadToCatboxAllBTN = true;
+                return true;
+            }
+            return false;
         }
 
     }

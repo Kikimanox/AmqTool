@@ -208,7 +208,7 @@
       "exec": "ffmpeg",
       "usage": [
         {
-          "call": "-hide_banner -i \"[:in]\" -b:a 320k -ac 2 -map a \"[:out]\" -y",
+          "call": "-hide_banner -i \"[:in]\" -b:a 320k -ac 2 -map 0:a:0 \"[:out]\" -y",
           "description": "Audio from input [Don't edit]"
         },
         {

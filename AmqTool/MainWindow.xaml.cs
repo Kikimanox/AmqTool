@@ -55,8 +55,9 @@ namespace AmqTool
         public static State state = new State();
         public static State previousState = new State();
         //public Process process = new Process();
-        public Process process2 = new Process();
+        public Process process2 = null; // the ffmpeg of the job that's rendering right now
         public static List<Process> processList = new List<Process>();
+        static readonly object processListLock = new object(); // RunCommandAndGetOutput runs on several threads at once
         public static List<Dictionary<string, Tuple<Key, string>>> SetKeybinds = new List<Dictionary<string, Tuple<Key, string>>>();
         ObservableCollection<AmqJob> JobsOBS = new ObservableCollection<AmqJob>();
         public string[] allFiles;
@@ -114,7 +115,7 @@ namespace AmqTool
             catch (Exception ex)
             {
                 MessageBox.Show(Application.Current.MainWindow, ex.Message, "Failed to load config file. Exiting.", MessageBoxButton.OK, MessageBoxImage.Error);
-                Application.Current.Shutdown();
+                canRun = false; // exit through the same path as a cancelled setup below (everything after it needs the config)
             }
 
             InitializeComponent();
@@ -122,7 +123,8 @@ namespace AmqTool
 
             if (!canRun)
             {
-                MessageBox.Show(Application.Current.MainWindow, "Can not start without a valid setup config.", "No or invalid config", MessageBoxButton.OK, MessageBoxImage.Warning);
+                if (config != null) // the config error above already said why
+                    MessageBox.Show(Application.Current.MainWindow, "Can not start without a valid setup config.", "No or invalid config", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Application.Current.Shutdown();
                 return;
             }
@@ -179,6 +181,7 @@ namespace AmqTool
         #region WindowStateSaving
         private void Window_SourceInitialized(object sender, EventArgs e)
         {
+            if (!canRun) return; // shutting down (setup cancelled / config broken), there may not even be a config
             cleanTmp();
             Application.Current.MainWindow.Height = config.conf.WindowProps.Y;
             Application.Current.MainWindow.Width = config.conf.WindowProps.X;
@@ -206,18 +209,21 @@ namespace AmqTool
             window_closing = true;
             try
             {
-                process2?.Kill();
+                try { process2?.Kill(); } catch {; } // may have just exited; the ones below still need killing
                 process2?.Dispose();
                 isProcessing = false;
-                processList = processList.Where(x => x != null).ToList();
-                foreach (var p in processList)
+                lock (processListLock)
                 {
-                    try
+                    processList = processList.Where(x => x != null).ToList();
+                    foreach (var p in processList)
                     {
-                        p?.Kill();
-                        p?.Dispose();
+                        try
+                        {
+                            p?.Kill();
+                            p?.Dispose();
+                        }
+                        catch {; }
                     }
-                    catch {; }
                 }
             }
             catch {; }
@@ -309,7 +315,7 @@ namespace AmqTool
                 //config.conf.WindowProps.FromVegasFlacPath = string.Join("\\", tmp.Take(tmp.Length - 1));
                 config.conf.Folders.DefaultOutPath = folder;
                 config.UpdateConfig();
-                MessageBox.Show(Application.Current.MainWindow, $"Vegas flac source main path is set to:\n\n{folder}", "Feedback", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Application.Current.MainWindow, $"Default render output path is set to:\n\n{folder}", "Feedback", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             config.UpdateConfig();
         }
@@ -845,8 +851,8 @@ namespace AmqTool
                 {
                     return;
                 }
-                enterGetClipsMode(files, ActuallyDontChangeView: true);
-                Player.LoadFile(files[0]);
+                // from the home screen actually go to get clips (like the question above says); enterGetClipsMode loads the file itself
+                enterGetClipsMode(files, ActuallyDontChangeView: state.CurrentState != States.Home);
                 return;
             }
             if (menuItem.Header.ToString() == "_Open default render output directory")
@@ -952,7 +958,7 @@ namespace AmqTool
             foreach (var f in files)
             {
                 ExtractAudioHint.Text = $"processing... Done with {extractAudio_done_num}/{extractAudio_total}";
-                var o = f.Split('\\').Last().Split('.').First();
+                var o = System.IO.Path.GetFileNameWithoutExtension(f); // not Split('.').First(): "Show.S01E01.mkv" and "Show.S01E02.mkv" would both become "Show"
                 o = $"{config.conf.Folders.IntoVegasMp4Path}\\{o}.flac";
                 string _ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", make_audio_from_input(f, o)));
                 extractAudio_done_num++;
@@ -1213,8 +1219,7 @@ namespace AmqTool
             if (btn.Name == "STOP_JOBS")
             {
                 if (MessageBox.Show(Application.Current.MainWindow, "Are you sure?", "Cancel all jobs", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-                if (process2 != null)
-                    process2.Kill();
+                try { process2?.Kill(); } catch { } // between two ffmpeg runs there's nothing (left) to kill
                 isProcessing = false; // force stop the jobs loop
                 // MessageBox.Show(Application.Current.MainWindow, "Jobs stopped.", "", MessageBoxButton.OK, MessageBoxImage.Information);
                 // SwitchToMpv(); No need to do this here because it will be done in if (btn.Name == "CLIPS_START_JOBS") anyway
@@ -1259,6 +1264,18 @@ namespace AmqTool
                 {
                     MessageBox.Show(Application.Current.MainWindow, "There are no unprocessed jobs in the list.", "Cancelling.", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
+                }
+
+                // Names typed into the jobs list skip the Add job checks. A '_' shifts the file name parsing of the
+                // volume edit (it would delete the 0 volume render and misname the new one), invalid characters fail the render.
+                foreach (var j in JobsOBS.Where(x => !x.JobFinished))
+                {
+                    var name = j.OutFileName ?? "";
+                    if (name.Contains('_') || name.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0)
+                    {
+                        MessageBox.Show(Application.Current.MainWindow, $"{j.ShowTitle}\n\nThe out file name \"{name}\" can't be used: no _ (underscore) and none of these: \\ / : * ? \" < > |\n\nRename it in the jobs list and start again.", "Invalid out file name", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
                 }
 
                 string t = ((int)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds).ToString();
@@ -1500,7 +1517,7 @@ namespace AmqTool
                                 var bs = GetOrFixUpOutDirForThisJob(j);
                                 var o1 = $"{bs}\\{outF}";
 
-                                if (state.CurrentState == States.Clips)
+                                if (j.FromState == States.Clips) // the job's mode, not the mode the window happens to be in
                                 {
                                     await Task.Delay(200);
                                     await Task.Run(() => LaunchProcessAndDisplayInfoInRTB("ffmpeg", make_audio_from_input_ss_to(j.Timestamps.startTime_SS, j.Timestamps.endTime_TO, j.ShowTitleFullPath, (j.UsedAudioId_Warning1Based - 1).ToString(), o1)));
@@ -2094,9 +2111,10 @@ namespace AmqTool
         }
         private void StartPlayingFromPlaylist(SB previousOrNext)
         {
+            if (allFiles == null) return; // nothing loaded yet
             var files = allFiles.ToList();
             var curIdx = files.IndexOf(Player.PlayingFilePath);
-            if (curIdx == -1) throw new Exception("For some reason the playing file is not in the list");
+            if (curIdx == -1) return; // playing something that isn't from the dropped files (e.g. a url), so there's no next/previous
             int newIdx = curIdx + (previousOrNext == SB.right ? 1 : -1);
             if (newIdx < 0) return;
             if (newIdx > (files.Count - 1)) return;
@@ -2199,7 +2217,7 @@ namespace AmqTool
         void process_Exited(object sender, EventArgs e)
         {
             if (window_closing) return;
-            doOutput($"process exited with code {process2.ExitCode}\n");
+            doOutput($"process exited with code {(sender as Process)?.ExitCode}\n");
         }
 
         void process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
@@ -2259,14 +2277,15 @@ namespace AmqTool
             });
         }
 
-        public static string processRetStr = "";
         /// <summary>
         /// Use Task.Run for async mode
         /// </summary>
         public static string RunCommandAndGetOutput(string exec_name, string args)
         {
+            // Every call gets its own buffer: these run in parallel (several volume checks, auto volume on two jobs...)
+            // and a shared one got reset/mixed between them, giving "??" or another clip's numbers.
+            var processRetStr = new StringBuilder();
             //* Create your Process
-            processRetStr = "";
             var process = new Process();
             process.EnableRaisingEvents = true;
             process.StartInfo.FileName = config.conf.Execs.First(x => x.Name == exec_name).Path; ;
@@ -2276,31 +2295,27 @@ namespace AmqTool
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             //* Set ONLY ONE handler here.
-            process.ErrorDataReceived += new DataReceivedEventHandler(ErrorOutputHandler);
+            process.ErrorDataReceived += (s, outLine) =>
+            {
+                if (outLine.Data == null) return;
+                lock (processRetStr) processRetStr.Append(outLine.Data).Append('\n');
+            };
             //* Start process
             process.Start();
-            processList.Add(process);
+            lock (processListLock) processList.Add(process);
             //* Read one element asynchronously
             process.BeginErrorReadLine();
             //* Read the other one synchronously
             string output = process.StandardOutput.ReadToEnd(); // this doesn't really get anything
             Console.WriteLine(output); //ig.. in case it would give anything
-            process.WaitForExit();
+            process.WaitForExit(); // without a timeout this also waits until all of stderr went through the handler
             //processList.Find(x => x.Id == process.Id)?.Dispose();
             try
             {
-                processList.RemoveAll(x => x.HasExited);
+                lock (processListLock) processList.RemoveAll(x => x.HasExited);
             }
             catch { }
-            return processRetStr;
-        }
-
-        static void ErrorOutputHandler(object sendingProcess, DataReceivedEventArgs outLine)
-        {
-            //* Do your stuff with the output (write to console/log/StringBuilder)
-            //Console.WriteLine(outLine.Data);
-            if (outLine.Data == null) return;
-            processRetStr += (outLine.Data.ToString() + "\n");
+            lock (processRetStr) return processRetStr.ToString();
         }
 
         #endregion
@@ -2567,7 +2582,7 @@ namespace AmqTool
                     job.__GetVolumeBTN = true;
                     job.__VolumeEditSlider = false; // useless in process mode, edit the volume in vegas!
                 }
-                var t_ = TimeSpan.FromMilliseconds(Player.startTimestamp.Time.TotalMilliseconds - Player.endTimestamp.Time.TotalMilliseconds).ToString();
+                var t_ = TimeSpan.FromMilliseconds(Player.endTimestamp.Time.TotalMilliseconds - Player.startTimestamp.Time.TotalMilliseconds).ToString();
                 var t = t_.TrimEnd('0');
                 if (!t_.Contains(".")) t = t_;
                 job.ShowTitleToolTip += $"  SS: {Player.startTimestamp.StrVal}  TO: {Player.endTimestamp.StrVal}  T: {t}";
@@ -2673,7 +2688,7 @@ namespace AmqTool
                         bool isDownloaded = false;
                         client.DownloadFileCompleted += (s, e) => isDownloaded = true;
                         client.DownloadProgressChanged += (s, e) => UpdateProgBar?.Invoke(e, jobId);
-                        await Task.Run(() => { try { client.DownloadFileAsync(new Uri(inPath), path); } catch { } });
+                        await Task.Run(() => { try { client.DownloadFileAsync(new Uri(inPath), path); } catch { isDownloaded = true; } }); // could not even start: don't wait forever, the missing file is handled below
                         await Task.Run(async () => { while (!isDownloaded) { await Task.Delay(250); } });
                     }
                     catch (Exception ex)
@@ -2749,7 +2764,7 @@ namespace AmqTool
                         bool isDownloaded = false;
                         client.DownloadFileCompleted += (s, e) => isDownloaded = true;
                         client.DownloadProgressChanged += (s, e) => UpdateProgBar?.Invoke(e, jobId);
-                        await Task.Run(() => { try { client.DownloadFileAsync(new Uri(inPath), path); } catch { } });
+                        await Task.Run(() => { try { client.DownloadFileAsync(new Uri(inPath), path); } catch { isDownloaded = true; } }); // could not even start: don't wait forever, the missing file is handled below
                         await Task.Run(async () => { while (!isDownloaded) { await Task.Delay(250); } });
                     }
                     catch (Exception ex)
@@ -2885,15 +2900,18 @@ namespace AmqTool
         /// <returns>New path</returns>
         public async Task<string> make_new_changedvolume_media(double vol, string inPathOld)
         {
-            var spl = inPathOld.Split('_');
+            // only look at the file name: an '_' in the folder path (D:\AMQ_renders\...) used to shift everything
+            var dir = System.IO.Path.GetDirectoryName(inPathOld);
+            var fileName = System.IO.Path.GetFileName(inPathOld);
+            var spl = fileName.Split('_');
             if (spl.Length < 4)
             {
                 MessageBox.Show(Application.Current.MainWindow, $"{inPathOld}\n\nCan not edit volume for this file, was the file name changed?");
                 return inPathOld;
             }
             var oldVol = spl[3];
-            int oldVolTest;
-            if (!int.TryParse(oldVol, out oldVolTest))
+            double oldVolTest;
+            if (!double.TryParse(oldVol, NumberStyles.Float, CultureInfo.InvariantCulture, out oldVolTest)) // can be a half step like 7.5
             {
                 MessageBox.Show(Application.Current.MainWindow, $"{oldVol}\n\n{inPathOld}\n\nCould not parse volume from this file name.");
                 return inPathOld;
@@ -2902,12 +2920,12 @@ namespace AmqTool
             {
                 string ret = inPathOld;
                 string pattern = @"(.*?_.*?_.*?_)(.*?)(_.*?$)";
-                var ms = Regex.Matches(inPathOld, pattern, RegexOptions.Singleline);
+                var ms = Regex.Matches(fileName, pattern, RegexOptions.Singleline);
                 if (ms.Count != 0)
                 {
                     var m = ms[0];
-                    ret = $"{m.Groups[1].Value}{vol}{m.Groups[3].Value}";
-                    string volChg = vol > 0 ? $"+{vol}" : $"+{vol}";
+                    ret = System.IO.Path.Combine(dir, $"{m.Groups[1].Value}{vol}{m.Groups[3].Value}");
+                    string volChg = vol > 0 ? $"+{vol}" : $"{vol}";
                     if (inPathOld.EndsWith(".mp3"))
                         await Task.Run(() => RunCommandAndGetOutput("ffmpeg", volume_edit_audio(inPathOld, ret, volChg)));
                     else
@@ -2944,7 +2962,11 @@ namespace AmqTool
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        var job = JobsOBS[MyIdxById(MyID(tbx))];
+                        var id = MyID(tbx);
+                        var job = JobsOBS.FirstOrDefault(x => x.Id == id); // could have been removed in the meantime
+                        // only process jobs take their audio from "<vegas flac path>\<out name>.flac|mp3"; for get clips
+                        // jobs this disabled the volume? button (and the auto volume bulb) on every rename
+                        if (job == null || job.FromState != States.Process) return;
                         job.__GetVolumeBTN = false;
                         file = isValidAudioPath(tbx.Text);
                         if (file.Item1)
@@ -3058,7 +3080,8 @@ namespace AmqTool
             }
             playerLoaded = false;
             LoadVideoIntoPlayer(job.ShowTitleFullPath);
-            await Task.Run(() => { while (!playerLoaded) { Task.Delay(200); } });
+            // wait for mpv (this used to spin a CPU core at 100%, forever if the file never loaded)
+            for (int i = 0; i < 150 && !playerLoaded; i++) await Task.Delay(200);
             await Task.Delay(200);
             I_Know_the_process_input_file_name.Text = job.ShowTitleFullPath;
             GET_CLIPS_START.Text = job.Timestamps.startTime_SS;
@@ -3086,7 +3109,9 @@ namespace AmqTool
                 if (res == MessageBoxResult.Cancel) return;
                 if (res == MessageBoxResult.Yes)
                 {
-                    foreach (var f in new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File, job.Rendered720File_VOL0, job.Rendered480File_VOL0, job.RenderedMP3File_VOL0, $"TMP--{job.Rendered720File_VOL0}", $"TMP--{job.Rendered480File_VOL0}" }) // todo: check why this doesnt get deleted
+                    // process mode's intermediate video: same folder, "TMP--" in front of the file name (not the whole path)
+                    string Tmp(string p) => string.IsNullOrEmpty(p) ? null : System.IO.Path.Combine(System.IO.Path.GetDirectoryName(p), "TMP--" + System.IO.Path.GetFileName(p));
+                    foreach (var f in new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File, job.Rendered720File_VOL0, job.Rendered480File_VOL0, job.RenderedMP3File_VOL0, Tmp(job.Rendered720File_VOL0), Tmp(job.Rendered480File_VOL0) })
                     {
                         try
                         {
@@ -3176,7 +3201,7 @@ namespace AmqTool
             return true;
         }
 
-        private static T FindInPanels<T>(Panel panel, Func<T, bool> match) where T : class
+        public static T FindInPanels<T>(Panel panel, Func<T, bool> match) where T : class
         {
             foreach (var child in panel.Children)
             {
@@ -3187,9 +3212,10 @@ namespace AmqTool
         }
         private async void JobsBTN_VolumeCheck_Click(object sender, MouseButtonEventArgs e)
         {
+            AmqJob job = null;
             try
             {
-                var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+                job = JobsOBS[MyIdxById(MyID(sender as Button))];
                 if (job.FromState == States.Process && !job.JobFinished)
                 {
                     job.__GetVolumeBTN = false;
@@ -3225,10 +3251,18 @@ namespace AmqTool
                     //var path2 = $"{GetOrFixUpOutDirForThisJob(job)}\\{_path2}";
                     //var optsT = new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File };
                     //var fileTMP  = optsT.FirstOrDefault(File.Exists);
+                    // the TMP-- video (rendered without the vegas audio) of the same quality as `file`. Not FinalOutFileName:
+                    // that changes with every name built for the job (simulate, the duplicate check...)
+                    var quality = file == job.Rendered720File_VOL0 ? "720" : file == job.Rendered480File_VOL0 ? "480" : null;
+                    if (quality == null)
+                    {
+                        MessageBox.Show(Application.Current.MainWindow, "This only works for jobs with a rendered 720 or 480 video.", "Can't put the audio on again", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
                     try
                     {
                         job.__GetVolumeBTN = false;
-                        var tmpF = $"{GetOrFixUpOutDirForThisJob(job)}\\{job.FinalOutFileName}";
+                        var tmpF = $"{GetOrFixUpOutDirForThisJob(job)}\\{job.BuildFinalOutName(quality, 0, true)}";
                         var __ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", put_flac_on_vid(tmpF, job.AudioReplacementPath, file)));
                         job.maxVolume_meanVolume = await get_volume_data_db_only_video(file);
                     }
@@ -3243,12 +3277,14 @@ namespace AmqTool
                 // await UpdateVolumeValuesTextbox(job, file, false);
                 job.maxVolume_meanVolume = await get_volume_data_db_only_video(file);
             }
-            catch
+            catch (Exception ex)
             {
-
+                // this used to be swallowed silently, leaving the button (and the bulb) disabled until a restart
+                MessageBox.Show(Application.Current.MainWindow, $"Couldn't check the volume:\n\n{ex.Message}", "Volume check failed", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally
             {
+                if (job != null && !isProcessing) job.__GetVolumeBTN = true; // (while rendering it stays off like everything else)
                 UpdateJobsJsonFile();
             }
         }
@@ -3313,14 +3349,20 @@ namespace AmqTool
                 var why = AutoVolume.IsPeakLimited(max, mean) ? $" (stopped short of {AutoVolume.TargetMean} dB mean so the max stays at {AutoVolume.MaxPeak} dB or lower)" : "";
                 SetStatusBarText($"Auto volume '{job.OutFileName}': slider {gain:+0.#;-0.#;0} dB, the clip was {max} | {mean} dB (max | mean){why}", SB.left);
             }
+            catch (Exception ex)
+            {
+                SetStatusBarText("", SB.left);
+                MessageBox.Show(this, $"Auto volume failed:\n\n{ex.Message}", "Auto volume", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             finally
             {
-                if (File.Exists(cut)) File.Delete(cut);
-                job.__GetVolumeBTN = true;
+                try { if (File.Exists(cut)) File.Delete(cut); } catch { } // still locked by a stuck ffmpeg: cleanTmp gets it later
+                if (!isProcessing) job.__GetVolumeBTN = true;
             }
         }
 
-        public async Task ExecuteVolumeEdit(AmqJob job)
+        /// <returns>true if upload links had to be dropped (they were for the files before this volume edit)</returns>
+        public async Task<bool> ExecuteVolumeEdit(AmqJob job)
         {
             var v = job.VolumeChangeValue;
             job.TryDeleteAllButVol0And(v);
@@ -3328,12 +3370,14 @@ namespace AmqTool
 
             string wasDone = "";
             bool wasMp3 = false;
+            bool linksDropped = false;
 
             if (!string.IsNullOrEmpty(job.RenderedMP3File_VOL0))
             {
                 var _outPath = job.BuildFinalOutName("mp3", v);
                 var outPath = $"{GetOrFixUpOutDirForThisJob(job)}\\{_outPath}";
                 string _ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", volume_edit_audio(job.RenderedMP3File_VOL0, outPath, volChg)));
+                if (outPath != job.RenderedMP3File && !string.IsNullOrEmpty(job.CatboxLinkMP3)) { job.CatboxLinkMP3 = null; job.__CatboxLinkMP3 = false; linksDropped = true; }
                 job.RenderedMP3File = outPath;
                 wasDone = outPath;
                 wasMp3 = true;
@@ -3343,6 +3387,7 @@ namespace AmqTool
                 var _outPath = job.BuildFinalOutName("720", v);
                 var outPath = $"{GetOrFixUpOutDirForThisJob(job)}\\{_outPath}";
                 string _ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", volume_edit(job.Rendered720File_VOL0, outPath, volChg)));
+                if (outPath != job.Rendered720File && !string.IsNullOrEmpty(job.CatboxLink720)) { job.CatboxLink720 = null; job.__CatboxLink720 = false; linksDropped = true; }
                 job.Rendered720File = outPath;
                 wasDone = outPath;
                 wasMp3 = false;
@@ -3352,6 +3397,7 @@ namespace AmqTool
                 var _outPath = job.BuildFinalOutName("480", v);
                 var outPath = $"{GetOrFixUpOutDirForThisJob(job)}\\{_outPath}";
                 string _ = await Task.Run(() => RunCommandAndGetOutput("ffmpeg", volume_edit(job.Rendered480File_VOL0, outPath, volChg)));
+                if (outPath != job.Rendered480File && !string.IsNullOrEmpty(job.CatboxLink480)) { job.CatboxLink480 = null; job.__CatboxLink480 = false; linksDropped = true; }
                 job.Rendered480File = outPath;
                 wasDone = outPath;
                 wasMp3 = false;
@@ -3364,6 +3410,7 @@ namespace AmqTool
                 else
                     job.maxVolume_meanVolume = await get_volume_data_db_only_audio(wasDone);
             }
+            return linksDropped;
         }
 
         public bool only_one_upl2 = true; // todo, maybe allow multiple at once :hmmm:
@@ -3472,16 +3519,26 @@ namespace AmqTool
         {
             var job = JobsOBS[MyIdxById(MyID(sender as Button))];
             job.__EditVolumeValueOrangeBTN = false;
+            bool linksDropped = false;
 
             if (e.MiddleButton == MouseButtonState.Pressed)
             {
                 // todo: replace audio
-                await ExecuteVolumeEdit(job);
+                linksDropped |= await ExecuteVolumeEdit(job);
             }
 
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                await ExecuteVolumeEdit(job);
+                linksDropped |= await ExecuteVolumeEdit(job);
+            }
+
+            if (linksDropped)
+            {
+                // the uploads were the old volume, so back to "not uploaded" (the copy buttons would hand out the old files)
+                job.__UploadToCatboxAllBTN = true;
+                var uploadBtn = FindInPanels<Button>(GetTopSPParent((sender as Button).Parent as FrameworkElement), b => (b.Tag as string) == "upload");
+                if (uploadBtn != null) uploadBtn.Style = Application.Current.Resources["JobsBTN_Upload"] as Style;
+                SetStatusBarText($"'{job.OutFileName}' has a new volume, its old upload links were removed. Upload it again.", SB.left);
             }
 
             UpdateJobsJsonFile();

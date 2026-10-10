@@ -120,7 +120,8 @@ namespace AmqTool
             if (quality == "mp3") crf = $"_x_";
 
             var ext = quality == "mp3" ? "mp3" : "webm";
-            FinalOutFileName = $"{OutFileName}_{quality}{crf}{volumeChangeLevel}_{ShowTitle.TrimEnd('.')}.{ext}";
+            // (the disabled marker has < > in it, which can't be in a file name)
+            FinalOutFileName = $"{OutFileName}_{quality}{crf}{volumeChangeLevel}_{ShowTitle.Replace(DisabledPrefix, "").TrimEnd('.')}.{ext}";
             if (FromState == States.Process && quality != "mp3") FinalOutFileName = $"TMP--{FinalOutFileName}";
 
             if (justRet) return FinalOutFileName;
@@ -182,6 +183,14 @@ namespace AmqTool
 
         public void WeDone()
         {
+            // Jobs that got disabled (duplicate out name, missing input...) stay disabled. Without this they came back as
+            // normal jobs after every run and were rendered the next time.
+            if (JobFailed)
+            {
+                DisableJob();
+                return;
+            }
+
             __Rendered720File = Rendered720File != null;
             __Rendered480File = Rendered480File != null;
             __RenderedMP3File = RenderedMP3File != null;
@@ -349,16 +358,18 @@ namespace AmqTool
             {
                 if (!string.IsNullOrEmpty(o))
                 {
+                    // match on the file name only, an '_' in the folder path shifted everything
+                    var dir = System.IO.Path.GetDirectoryName(o);
+                    var name = System.IO.Path.GetFileName(o);
                     for (double i = -20; i <= 20; i += 0.5)
                     {
                         if (i == 0) continue; // don't delete the 0 volume change one
-                        string ret = o;
                         string pattern = @"(.*?_.*?_.*?_)(.*?)(_.*?$)";
-                        var ms = Regex.Matches(o, pattern, RegexOptions.Singleline);
+                        var ms = Regex.Matches(name, pattern, RegexOptions.Singleline);
                         if (ms.Count != 0)
                         {
                             var m = ms[0];
-                            var cand = $"{m.Groups[1].Value}{i}{m.Groups[3].Value}";
+                            var cand = System.IO.Path.Combine(dir, $"{m.Groups[1].Value}{i}{m.Groups[3].Value}");
                             if (File.Exists(cand))
                             {
                                 File.Delete(cand);
