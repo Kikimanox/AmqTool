@@ -60,6 +60,7 @@
                     <Button Name="BgsPath_3" Click="Button_Click" Style="{StaticResource JobsBTN_ClearProcessVideoPath}" Margin="5 0 0 0" />
                     <TextBlock Name="BgsPath_4" Text="missing" Style="{StaticResource ConfigSetupWindow_WarnTXT}"/>
                 </StackPanel>
+                <CheckBox Name="BgsSubfolders_Chk" Margin="22 6 0 0" Foreground="#BBB" FontSize="11px" Content="Also use pictures from sub-folders of this folder" ToolTip="Background pictures are picked from the folder above and every folder inside it"/>
 
                 <!--Folder-->
                 <StackPanel Margin="20 20 0 0" Orientation="Horizontal" HorizontalAlignment="Left">
@@ -70,8 +71,8 @@
                     <TextBlock Name="VolumeCheckerPath_4" Text="missing" Style="{StaticResource ConfigSetupWindow_WarnTXT}"/>
                 </StackPanel>
 
-                <!--Regular-->
-                <StackPanel Margin="20 20 0 0" Orientation="Horizontal" HorizontalAlignment="Left">
+                <!--Catbox hash: NOT USED ANYMORE, every upload goes to litterbox which doesn't need an account-->
+                <StackPanel Margin="20 20 0 0" Orientation="Horizontal" HorizontalAlignment="Left" Visibility="Collapsed">
                     <PasswordBox Name="CatboxHash_0" PasswordChanged="CatboxHash_0_PasswordChanged" Style="{StaticResource Tbx_Edi4_}" Password="catbox hash" ToolTip="Catbox hash"/>
                     <Button Name="CatboxHash_2" Click="Button_Click" Style="{StaticResource JobsBTN_QuestionMark}" Margin="5 0 0 0" />
                     <Button Name="CatboxHash_3" Click="Button_Click" Style="{StaticResource JobsBTN_ClearProcessVideoPath}" Margin="5 0 0 0" />

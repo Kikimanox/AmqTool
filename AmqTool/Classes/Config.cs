@@ -216,6 +216,9 @@ namespace AmqTool
         [JsonProperty("bgs_path")]
         public string BgsPath { get; set; }
 
+        [JsonProperty("bgs_include_subfolders")]
+        public bool BgsIncludeSubfolders { get; set; }
+
         [JsonProperty("tmp_path")]
         public string TmpPath { get; set; }
 

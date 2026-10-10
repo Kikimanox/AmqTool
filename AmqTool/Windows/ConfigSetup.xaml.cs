@@ -78,6 +78,7 @@ namespace AmqTool
             IntoVegasMp4Path = MainWindow.config.conf.Folders.IntoVegasMp4Path;
             DefaultOutPath = MainWindow.config.conf.Folders.DefaultOutPath;
             BgsPath = MainWindow.config.conf.Folders.BgsPath;
+            BgsSubfolders_Chk.IsChecked = MainWindow.config.conf.Folders.BgsIncludeSubfolders;
             CatboxHash = MainWindow.privateConfig.conf.catbox_userhash;
             CatboxHash_0.Password = CatboxHash;
         }
@@ -89,9 +90,21 @@ namespace AmqTool
             if (sp.Children.Count == 5)
             {
                 var tb = sp.Children.OfType<TextBlock>().FirstOrDefault();
-                tb.Text = Directory.Exists(sp.Children.OfType<TextBox>().FirstOrDefault().Text) ? "OK" : "invalid";
+                var box = sp.Children.OfType<TextBox>().FirstOrDefault();
+                tb.Text = Directory.Exists(box.Text) ? "OK" : "invalid";
                 if (tb.Name.StartsWith("FfmpegPath") || tb.Name.StartsWith("PowerShellPath"))
-                    tb.Text = File.Exists(sp.Children.OfType<TextBox>().FirstOrDefault().Text) ? "OK" : "invalid";
+                    tb.Text = File.Exists(box.Text) ? "OK" : "invalid";
+                // the small "invalid" text is easy to miss, so also outline the box in red
+                if (tb.Text == "OK")
+                {
+                    box.ClearValue(BorderBrushProperty);
+                    box.ClearValue(BorderThicknessProperty);
+                }
+                else
+                {
+                    box.BorderBrush = Brushes.Red;
+                    box.BorderThickness = new Thickness(2);
+                }
                 if (tb.Text == "OK")
                 {
                     var tbx = sender as TextBox;
@@ -203,6 +216,7 @@ namespace AmqTool
             MainWindow.config.conf.Folders.IntoVegasMp4Path = IntoVegasMp4Path;
             MainWindow.config.conf.Folders.DefaultOutPath = DefaultOutPath;
             MainWindow.config.conf.Folders.BgsPath = BgsPath;
+            MainWindow.config.conf.Folders.BgsIncludeSubfolders = BgsSubfolders_Chk.IsChecked == true;
             MainWindow.privateConfig.conf.catbox_userhash = CatboxHash;
 
             MainWindow.config.UpdateConfig();
@@ -223,9 +237,9 @@ namespace AmqTool
 
             if (left == "VolumeCheckerPath") return "This is where the files will be downloaded in the volume mode if the user checks the checkbox to also download the file";
 
-            if (left == "BgsPath") return "This is the path where you will place various image files. Out of those on every program startup a random one will be chosen as the background. If you only want to have one then just place one picture in the folder.";
+            if (left == "BgsPath") return "This is the path where you will place various image files (jpg, png, webp or bmp). Out of those on every program startup a random one will be chosen as the background (View > Randomize home background picks another one). If you only want to have one then just place one picture in the folder.\n\nTick the checkbox below it to also use the pictures in its sub-folders.";
 
-            if (left == "CatboxHash") return "Optional. Uploads from the jobs list go to litterbox and don't need this. It's only used when uploading from Volume mode, so those files land in your catbox.moe account (without it they're uploaded anonymously). Your userhash is shown at: https://catbox.moe/user/manage.php";
+            if (left == "CatboxHash") return "Not used anymore: every upload goes to litterbox now, which doesn't need an account.";
 
             if (left == "FfmpegPath") return "Set this path to the ffmpeg executable file (ffmpeg.exe).\n\nDon't have ffmpeg? Open a terminal and run:  winget install Gyan.FFmpeg\nthen reopen AmqTool, it picks up ffmpeg from PATH by itself.";
 

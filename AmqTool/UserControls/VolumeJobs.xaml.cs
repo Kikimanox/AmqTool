@@ -497,6 +497,20 @@ namespace AmqTool.UserControls
 
             if (isUploaded)
             {
+                // litterbox deletes uploads after 72h, don't hand out a dead link
+                bool expired;
+                Mouse.OverrideCursor = Cursors.Wait;
+                try { expired = await Litterbox.IsExpiredAsync(job.CatboxLinkNEW); }
+                finally { Mouse.OverrideCursor = null; }
+                if (expired)
+                {
+                    job.CatboxLinkNEW = "";
+                    job.__UploadToCatboxAllBTN = true;
+                    btn.Style = Application.Current.Resources["JobsBTN_Upload"] as Style;
+                    UpdateJobsJsonFile();
+                    MessageBox.Show("The litterbox link has expired (litterbox deletes uploads after 72 hours), so it was removed.\n\nUse the upload button to upload it again.", "Link expired", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
                 Clipboard.SetText(job.CatboxLinkNEW);
                 return;
             }
@@ -509,50 +523,26 @@ namespace AmqTool.UserControls
                 try
                 {
                     only_one_upl2 = false;
-                    using (HttpClient c = new HttpClient())
+                    await Task.Delay(300);
+
+                    var (ok, text) = await Litterbox.UploadAsync(job.SavedFilePathEdited);
+                    if (ok)
                     {
-                        c.Timeout = TimeSpan.FromMinutes(10);
-                        c.BaseAddress = new Uri(@"https://catbox.moe");
-                        await Task.Delay(300);
-
-                        var link = "";
-                        byte[] media;
-                        using (FileStream f = File.OpenRead(job.SavedFilePathEdited))
-                        {
-                            media = new byte[f.Length];
-                            await f.ReadAsync(media, 0, media.Length);
-                        }
-                        string ext = job.SavedFilePathEdited.Split('.').Last();
-                        string t = ((int)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds).ToString();
-                        var formContent = new MultipartFormDataContent
-                        {
-                            {new StringContent("fileupload"), "reqtype"},
-                            {new StreamContent(new MemoryStream(media)), "fileToUpload",$"{t}_upload.{ext}"}
-                        };
-                        // the hash is optional now, without one catbox does an anonymous upload
-                        if (!string.IsNullOrEmpty(MainWindow.privateConfig.conf.catbox_userhash))
-                            formContent.Add(new StringContent(MainWindow.privateConfig.conf.catbox_userhash), "userhash");
-                        var res = await c.PostAsync("/user/api.php", formContent);
-
-                        if (res.IsSuccessStatusCode)
-                        {
-                            link = await res.Content.ReadAsStringAsync();
-                            job.CatboxLinkNEW = link;
-                            Dispatcher.Invoke(() => UpdateJobsJsonFile());
-                        }
-                        else
-                        {
-                            MessageBox.Show($"{await res.Content.ReadAsStringAsync()}\n\nFailed to upload: {job.SavedFilePathEdited}", "Catbox upload failed", MessageBoxButton.OK, MessageBoxImage.Error);
-                            job.__UploadToCatboxAllBTN = true;
-                        }
+                        job.CatboxLinkNEW = text;
+                        Dispatcher.Invoke(() => UpdateJobsJsonFile());
+                    }
+                    else
+                    {
+                        MessageBox.Show($"{text}\n\nFailed to upload: {job.SavedFilePathEdited}", "Litterbox upload failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                        job.__UploadToCatboxAllBTN = true;
                     }
                 }
                 catch (Exception ex)
                 {
                     string extra = "";
                     if (ex.Message == "A task was canceled.") extra = "\n\nTimeout has occurred (10 minutes)";
-                    MessageBox.Show($"{ex.Message}\n{ex.InnerException}{extra}", "Something went wrong when uploading to catbox", MessageBoxButton.OK, MessageBoxImage.Error);
-                    //job.__UploadToCatboxAllBTN = true;
+                    MessageBox.Show($"{ex.Message}\n{ex.InnerException}{extra}", "Something went wrong when uploading to litterbox", MessageBoxButton.OK, MessageBoxImage.Error);
+                    job.__UploadToCatboxAllBTN = true; // no automatic retry (it popped this box in a loop while offline), clicking upload again works
                 }
                 finally
                 {
@@ -570,7 +560,8 @@ namespace AmqTool.UserControls
                 btn.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                 return;
             }
-            btn.Style = Application.Current.Resources["JobsBTN_Uploaded"] as Style;
+            // only look "uploaded" if it actually got a link (a failed upload used to turn the button green too)
+            btn.Style = Application.Current.Resources[string.IsNullOrEmpty(job.CatboxLinkNEW) ? "JobsBTN_Upload" : "JobsBTN_Uploaded"] as Style;
             job.__UploadToCatboxAllBTN = true; // TODO: Different behaviour at the start!!
             Dispatcher.Invoke(() => UpdateJobsJsonFile());
         }

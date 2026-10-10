@@ -68,7 +68,7 @@
                                     </StackPanel>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
-                                    <Button Loaded="UPLButton_Loaded" Click="JobsBTN_Upload_Click" ToolTip="Start upload to catbox (or copy uploaded link to clipboard)" Style="{DynamicResource JobsBTN_Upload}" IsEnabled="{Binding __UploadToCatboxAllBTN}" Margin="0 0 0 0"/>
+                                    <Button Loaded="UPLButton_Loaded" Click="JobsBTN_Upload_Click" ToolTip="Start upload to litterbox (links last 72h), or copy the uploaded link to clipboard (an expired link gets removed so you can upload again)" Style="{DynamicResource JobsBTN_Upload}" IsEnabled="{Binding __UploadToCatboxAllBTN}" Margin="0 0 0 0"/>
                                     <Button PreviewMouseDown="JobsBTN_Cancel_MouseDown" ToolTip="Remove this from the list" Style="{StaticResource JobsBTN_Cancel}" Margin="5 0 0 0" IsEnabled="{Binding __IsRegularJob}"/>
                                     <Button Click="JobsBTN_CheckVideo_Click" ToolTip="Preview the video result (this will prioritize the newest edited volume file if a volume edit has been executed)" Style="{StaticResource JobsBTN_CheckVideo}" IsEnabled="{Binding __IsRegularJob}" Margin="5 0 0 0"/>
                                     <Button Click="JobsBTN_CheckVideo_Click2" ToolTip="This will always only check the original video" Style="{StaticResource JobsBTN_CheckVideoOriginal}" IsEnabled="{Binding __IsRegularJob}" Margin="5 0 0 0"/>

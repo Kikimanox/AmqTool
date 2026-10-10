@@ -47,7 +47,6 @@ namespace AmqTool
         public bool playerLoaded = false;
         public bool canRun = true;
         public bool isProcessing = false;
-        public static string bgsPath;
         public static string tmpPath;
         public static Config config;
         public static PrivateConfig privateConfig;
@@ -130,7 +129,6 @@ namespace AmqTool
 
             config.conf.WindowProps.LastStarted = DateTime.Now.ToString("dd-MM-yyyyTHH:mm:ssK");
 
-            bgsPath = config.conf.Folders.BgsPath;
             tmpPath = config.conf.Folders.TmpPath;
             ToolTipService.ShowDurationProperty.OverrideMetadata(
                 typeof(DependencyObject), new FrameworkPropertyMetadata(Int32.MaxValue));
@@ -322,27 +320,57 @@ namespace AmqTool
             //    advExtensions.Add($" {adv.Name} v{adv.Version}");
         }
 
+        public static readonly string[] BackgroundImageTypes = { "jpg", "jpeg", "png", "webp", "bmp" };
+
         private void setRandomBg(bool firstTime = false)
         {
-            backgroundImgs = GetFilesFrom(bgsPath, new string[] { "jpg", "png" });
+            var folder = config.conf.Folders.BgsPath;
+            if (!firstTime && !Directory.Exists(folder))
+            {
+                var r = MessageBox.Show(Application.Current.MainWindow, $"The background pictures folder doesn't exist (anymore):\n\n{folder}\n\nDo you want to pick a new one?", "Can't change background image", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (r != MessageBoxResult.Yes) return;
+                var picked = getFolderPathFromOfd();
+                if (picked == null) return;
+                config.conf.Folders.BgsPath = folder = picked;
+                config.UpdateConfig();
+            }
+
+            backgroundImgs = GetFilesFrom(folder, BackgroundImageTypes, config.conf.Folders.BgsIncludeSubfolders);
             if (!firstTime)
             {
+                var where = config.conf.Folders.BgsIncludeSubfolders ? "this folder (or its sub-folders)" : "this folder";
                 if (backgroundImgs.Length == 1)
                 {
-                    var res = MessageBox.Show(Application.Current.MainWindow, $"Only one background image exist.\n\nDo you want to open the relavant folder and add more to it?", "Can't change background image", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (res == MessageBoxResult.Yes) Process.Start(config.conf.Folders.BgsPath);
+                    var res = MessageBox.Show(Application.Current.MainWindow, $"Only one background picture exists in {where}:\n\n{folder}\n\nDo you want to open the folder and add more to it?", "Can't change background image", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (res == MessageBoxResult.Yes) Process.Start(folder);
                     return;
                 }
                 if (backgroundImgs.Length == 0)
                 {
-                    var res = MessageBox.Show(Application.Current.MainWindow, $"No background images exist\n\nDo you want to open the relavant folder and add more to it?", "Can't change background image", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (res == MessageBoxResult.Yes) Process.Start(config.conf.Folders.BgsPath);
+                    var res = MessageBox.Show(Application.Current.MainWindow, $"No background pictures ({string.Join(", ", BackgroundImageTypes)}) found in {where}:\n\n{folder}\n\nDo you want to open the folder and add some?", "Can't change background image", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (res == MessageBoxResult.Yes) Process.Start(folder);
                     return;
                 }
             }
-            if (backgroundImgs.Length == 0) return;
-            var img = new System.Windows.Controls.Image { Source = new BitmapImage(new Uri(backgroundImgs[rng.Next(backgroundImgs.Length)], UriKind.Absolute)) };
-            _Home_Grid_BG.ImageSource = img.Source;
+
+            // random order, skipping files that can't be loaded (broken, or e.g. webp on a PC without the webp codec)
+            foreach (var path in backgroundImgs.OrderBy(_ => rng.Next()))
+            {
+                try
+                {
+                    var bmp = new BitmapImage();
+                    bmp.BeginInit();
+                    bmp.UriSource = new Uri(path, UriKind.Absolute);
+                    bmp.CacheOption = BitmapCacheOption.OnLoad; // decode now (so errors land here) and don't keep the file locked
+                    bmp.EndInit();
+                    _Home_Grid_BG.ImageSource = bmp;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Can't use {path} as a background: {ex.Message}");
+                }
+            }
         }
 
         private void Window_StateChanged(object sender, EventArgs e)
@@ -457,12 +485,21 @@ namespace AmqTool
         private static string[] GetFilesFrom(string searchFolder, string[] filters, bool isRecursive = false)
         {
             List<string> filesFound = new List<string>();
-            var searchOption = isRecursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            foreach (var filter in filters)
+            // walk folders one by one instead of SearchOption.AllDirectories, which gives up completely on the first
+            // sub-folder it can't read
+            var folders = new Stack<string>();
+            folders.Push(searchFolder);
+            while (folders.Count > 0)
             {
+                var folder = folders.Pop();
                 try
                 {
-                    filesFound.AddRange(System.IO.Directory.GetFiles(searchFolder, string.Format("*.{0}", filter), searchOption));
+                    foreach (var filter in filters)
+                        filesFound.AddRange(Directory.GetFiles(folder, string.Format("*.{0}", filter)));
+                    if (isRecursive)
+                        foreach (var sub in new DirectoryInfo(folder).GetDirectories())
+                            if (!sub.Attributes.HasFlag(FileAttributes.ReparsePoint)) // junctions can loop back to a parent
+                                folders.Push(sub.FullName);
                 }
                 catch (Exception e)
                 {
@@ -754,7 +791,13 @@ namespace AmqTool
 
             // Edit
             if (menuItem.Header.ToString() == "_Keybindings") new KeybindSettings().ShowDialog();
-            if (menuItem.Header.ToString() == "_Edit all config") new ConfigSetup().ShowDialog();
+            if (menuItem.Header.ToString() == "_Edit all config")
+            {
+                var oldBgs = (config.conf.Folders.BgsPath, config.conf.Folders.BgsIncludeSubfolders);
+                // show the new pictures right away if the background folder settings changed
+                if (new ConfigSetup().ShowDialog() == true && oldBgs != (config.conf.Folders.BgsPath, config.conf.Folders.BgsIncludeSubfolders))
+                    setRandomBg(firstTime: true);
+            }
             if (menuItem.Header.ToString() == "_From vegas flac path") SetFromVegasFlacPath();
             if (menuItem.Header.ToString() == "_Into vegas mp4 path") SetIntoVegasMp4Path();
             if (menuItem.Header.ToString() == "_Default render output path") SetDefaultOutPath();
@@ -847,7 +890,7 @@ namespace AmqTool
                 var res = MessageBox.Show(Application.Current.MainWindow, string.Join("\n", files) + "\n\nDo you want to open the output folder?", "Done converting to MP4", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 TaskbarItemInfo.ProgressState = TaskbarItemProgressState.None;
                 TaskbarItemInfo.ProgressValue = 0;
-                if (res == MessageBoxResult.Yes)
+                if (res == MessageBoxResult.Yes && Directory.Exists(config.conf.Folders.IntoVegasMp4Path))
                     Process.Start(config.conf.Folders.IntoVegasMp4Path);
                 return;
             }
@@ -861,7 +904,7 @@ namespace AmqTool
                 var res = MessageBox.Show(Application.Current.MainWindow, string.Join("\n", files) + "\n\nDo you want to open the output folder?", "Done extracting audio", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 TaskbarItemInfo.ProgressState = TaskbarItemProgressState.None;
                 TaskbarItemInfo.ProgressValue = 0;
-                if (res == MessageBoxResult.Yes)
+                if (res == MessageBoxResult.Yes && Directory.Exists(config.conf.Folders.IntoVegasMp4Path))
                     Process.Start(config.conf.Folders.IntoVegasMp4Path);
                 return;
             }
@@ -3075,17 +3118,72 @@ namespace AmqTool
             }
             LoadVideoIntoPlayer(load);
         }
-        private void JobsBTN_CopyUploaded7_Click(object sender, RoutedEventArgs e)
+        private async void JobsBTN_CopyUploaded7_Click(object sender, RoutedEventArgs e)
         {
-            Clipboard.SetText(JobsOBS[MyIdxById(MyID(sender as Button))].CatboxLink720);
+            var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+            if (await DropExpiredLinks(job, sender as Button, "720")) return;
+            Clipboard.SetText(job.CatboxLink720);
         }
-        private void JobsBTN_CopyUploaded4_Click(object sender, RoutedEventArgs e)
+        private async void JobsBTN_CopyUploaded4_Click(object sender, RoutedEventArgs e)
         {
-            Clipboard.SetText(JobsOBS[MyIdxById(MyID(sender as Button))].CatboxLink480);
+            var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+            if (await DropExpiredLinks(job, sender as Button, "480")) return;
+            Clipboard.SetText(job.CatboxLink480);
         }
-        private void JobsBTN_CopyUploaded3_Click(object sender, RoutedEventArgs e)
+        private async void JobsBTN_CopyUploaded3_Click(object sender, RoutedEventArgs e)
         {
-            Clipboard.SetText(JobsOBS[MyIdxById(MyID(sender as Button))].CatboxLinkMP3);
+            var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+            if (await DropExpiredLinks(job, sender as Button, "mp3")) return;
+            Clipboard.SetText(job.CatboxLinkMP3);
+        }
+
+        /// <summary>
+        /// Litterbox deletes uploads after 72h. Checks the job's links (all, or just one quality) and clears the ones
+        /// that are gone, so the job looks like it was never uploaded and the upload button can be used again.
+        /// </summary>
+        /// <returns>true if a link had expired (the user gets told)</returns>
+        private async Task<bool> DropExpiredLinks(AmqJob job, Button anyButtonOfJob, string onlyQuality = null)
+        {
+            var expired = new List<string>();
+            Mouse.OverrideCursor = Cursors.Wait;
+            try
+            {
+                if ((onlyQuality ?? "720") == "720" && !string.IsNullOrEmpty(job.CatboxLink720) && await Litterbox.IsExpiredAsync(job.CatboxLink720))
+                {
+                    job.CatboxLink720 = null; job.__CatboxLink720 = false; expired.Add("720");
+                }
+                if ((onlyQuality ?? "480") == "480" && !string.IsNullOrEmpty(job.CatboxLink480) && await Litterbox.IsExpiredAsync(job.CatboxLink480))
+                {
+                    job.CatboxLink480 = null; job.__CatboxLink480 = false; expired.Add("480");
+                }
+                if ((onlyQuality ?? "mp3") == "mp3" && !string.IsNullOrEmpty(job.CatboxLinkMP3) && await Litterbox.IsExpiredAsync(job.CatboxLinkMP3))
+                {
+                    job.CatboxLinkMP3 = null; job.__CatboxLinkMP3 = false; expired.Add("mp3");
+                }
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+            if (expired.Count == 0) return false;
+
+            // back to the "rendered but not uploaded" look
+            job.__UploadToCatboxAllBTN = true;
+            var uploadBtn = FindInPanels<Button>(GetTopSPParent(anyButtonOfJob.Parent as FrameworkElement), b => (b.Tag as string) == "upload");
+            if (uploadBtn != null) uploadBtn.Style = Application.Current.Resources["JobsBTN_Upload"] as Style;
+            UpdateJobsJsonFile();
+            MessageBox.Show(this, $"The litterbox link for {string.Join(" + ", expired)} has expired (litterbox deletes uploads after 72 hours), so it was removed from this job.\n\nUse the upload button to upload it again.", "Link expired", MessageBoxButton.OK, MessageBoxImage.Information);
+            return true;
+        }
+
+        private static T FindInPanels<T>(Panel panel, Func<T, bool> match) where T : class
+        {
+            foreach (var child in panel.Children)
+            {
+                if (child is T found && match(found)) return found;
+                if (child is Panel sub && FindInPanels(sub, match) is T deeper) return deeper;
+            }
+            return null;
         }
         private async void JobsBTN_VolumeCheck_Click(object sender, MouseButtonEventArgs e)
         {
@@ -3244,6 +3342,7 @@ namespace AmqTool
             }
             if (isUploaded)
             {
+                if (await DropExpiredLinks(job, btn)) return;
                 Clipboard.SetText($"**{job.OutFileName}**\n{job.ShowTitle}\n<{job.CatboxLink720}>\n<{job.CatboxLink480}>\n<{job.CatboxLinkMP3}>");
                 return;
             }
@@ -3265,72 +3364,38 @@ namespace AmqTool
                     only_one_upl2 = false;
 
 
-                    #region reee
-                    using (HttpClient c = new HttpClient())
+                    var upl = new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File };
+                    for (int i = 0; i < upl.Length; i++)
                     {
-                        c.Timeout = TimeSpan.FromMinutes(10);
-                        // c.BaseAddress = new Uri(@"https://litterbox.catbox.moe/resources/internals");  // Updated API endpoint
+                        if (string.IsNullOrEmpty(upl[i])) continue;
+                        if (i == 0 && job.__CatboxLink720) continue;
+                        if (i == 1 && job.__CatboxLink480) continue;
+                        if (i == 2 && job.__CatboxLinkMP3) continue;
+                        await Task.Delay(300);
 
-                        var upl = new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File };
-                        for (int i = 0; i < upl.Length; i++)
+                        var (ok, text) = await Litterbox.UploadAsync(upl[i]);
+                        if (ok)
                         {
-                            if (string.IsNullOrEmpty(upl[i])) continue;
-                            if (i == 0 && job.__CatboxLink720) continue;
-                            if (i == 1 && job.__CatboxLink480) continue;
-                            if (i == 2 && job.__CatboxLinkMP3) continue;
-                            await Task.Delay(300);
-
-                            var link = "";
-                            byte[] media;
-                            using (FileStream f = File.OpenRead(upl[i]))
-                            {
-                                media = new byte[f.Length];
-                                await f.ReadAsync(media, 0, media.Length);
-                            }
-
-                            string ext = "mp3";
-                            if (i != 2)
-                            {
-                                ext = "webm";
-                            }
-
-                            string t = ((int)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds).ToString();
-
-                            var formContent = new MultipartFormDataContent();
-                            formContent.Add(new StringContent("fileupload"), "reqtype");
-                            formContent.Add(new StringContent("72h"), "time");
-
-                            var fileContent = new ByteArrayContent(media);
-                            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                            formContent.Add(fileContent, "fileToUpload", $"{t}.{ext}");
-
-                            var res = await c.PostAsync("https://litterbox.catbox.moe/resources/internals/api.php", formContent);
-
-                            if (res.IsSuccessStatusCode)
-                            {
-                                link = await res.Content.ReadAsStringAsync();
-                                if (i == 0) { job.CatboxLink720 = link; job.__CatboxLink720 = true; }
-                                if (i == 1) { job.CatboxLink480 = link; job.__CatboxLink480 = true; }
-                                if (i == 2) { job.CatboxLinkMP3 = link; job.__CatboxLinkMP3 = true; }
-                                Dispatcher.Invoke(() => UpdateJobsJsonFile());
-                            }
-                            else
-                            {
-                                await Dispatcher.Invoke(async () =>
-                                {
-                                    MessageBox.Show(Application.Current.MainWindow, $"{await res.Content.ReadAsStringAsync()}\n\nFailed to upload: {upl[i]}", "Litterbox upload failed", MessageBoxButton.OK, MessageBoxImage.Error);
-                                });
-                                job.__UploadToCatboxAllBTN = true;
-                            }
+                            if (i == 0) { job.CatboxLink720 = text; job.__CatboxLink720 = true; }
+                            if (i == 1) { job.CatboxLink480 = text; job.__CatboxLink480 = true; }
+                            if (i == 2) { job.CatboxLinkMP3 = text; job.__CatboxLinkMP3 = true; }
+                            Dispatcher.Invoke(() => UpdateJobsJsonFile());
+                        }
+                        else
+                        {
+                            var file = upl[i];
+                            Dispatcher.Invoke(() => MessageBox.Show(Application.Current.MainWindow, $"{text}\n\nFailed to upload: {file}", "Litterbox upload failed", MessageBoxButton.OK, MessageBoxImage.Error));
+                            job.__UploadToCatboxAllBTN = true;
                         }
                     }
-                    #endregion
                 }
                 catch (Exception ex)
                 {
                     string extra = "";
                     if (ex.Message == "A task was canceled.") extra = "\n\nTimeout has occurred (10 minutes)";
-                    MessageBox.Show(Application.Current.MainWindow, $"{ex.Message}\n{ex.InnerException}{extra}", "Something went wrong when uploading to Litterbox", MessageBoxButton.OK, MessageBoxImage.Error);
+                    // we're on a worker thread here, MainWindow may only be touched from the UI thread
+                    Dispatcher.Invoke(() => MessageBox.Show(Application.Current.MainWindow, $"{ex.Message}\n{ex.InnerException}{extra}", "Something went wrong when uploading to Litterbox", MessageBoxButton.OK, MessageBoxImage.Error));
+                    job.__UploadToCatboxAllBTN = true; // no automatic retry below, clicking upload again works
                 }
                 finally
                 {
@@ -3356,7 +3421,11 @@ namespace AmqTool
                 (sender as Button).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
                 return;
             }
-            btn.Style = Application.Current.Resources["JobsBTN_Uploaded"] as Style; // Todo: set this style if needed recheck jobs
+            // only look "uploaded" if every rendered file got a link (a failed upload used to turn the button green too)
+            bool allUploaded = (string.IsNullOrEmpty(job.Rendered720File) || job.__CatboxLink720)
+                && (string.IsNullOrEmpty(job.Rendered480File) || job.__CatboxLink480)
+                && (string.IsNullOrEmpty(job.RenderedMP3File) || job.__CatboxLinkMP3);
+            btn.Style = Application.Current.Resources[allUploaded ? "JobsBTN_Uploaded" : "JobsBTN_Upload"] as Style;
             job.__UploadToCatboxAllBTN = true;
             Dispatcher.Invoke(() => UpdateJobsJsonFile());
         }

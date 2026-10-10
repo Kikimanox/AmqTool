@@ -10,7 +10,6 @@ Desktop tool for making AMQ (Anime Music Quiz) uploads: cut OPs/EDs/inserts out 
 2. You need **ffmpeg**. Don't have it? Open a terminal and run `winget install Gyan.FFmpeg`, AmqTool finds it by itself.
 3. On the first start fill in the setup window (the blue **?** buttons explain each folder).
    - ⚠️ The orange **tmp** folder gets wiped every time AmqTool starts and closes. Keep the default or use an empty folder.
-   - The catbox hash is optional.
 
 **Coming from the old installer** (the one that installed into `C:\Program Files (x86)\AmqTool` and needed the permissions fix): install the new version and on its first start AmqTool offers to import your settings and job lists from the old install. Then uninstall the old one (Settings → Apps → AmqTool, version 0.1).
 
@@ -26,6 +25,8 @@ Desktop tool for making AMQ (Anime Music Quiz) uploads: cut OPs/EDs/inserts out 
 4. **Mkv to Mp4**: convert episodes for Vegas.
 5. **Extract audio**: anything → flac.
 
+Uploads go to litterbox and its links only last 72 hours. When you copy a link that has expired, AmqTool tells you and removes it, so you can just upload again.
+
 Drag and drop files into the window: in Volume mode they get analyzed, otherwise they load into the player (PageUp / PageDown switch between dropped files). Almost everything explains itself when you hover over it. Keybinds are in Edit → Keybindings.
 
 ## Making a release
@@ -39,4 +40,4 @@ Drag and drop files into the window: in Volume mode they get analyzed, otherwise
 
 Building needs Visual Studio 2022+ (or the VS Build Tools) with .NET Framework 4.7.2. Only use **Release | Any CPU**: `lib\mpv-1.dll` is 32-bit, so the app has to run as a 32-bit process.
 
-To test the updater without publishing anything, point `AMQTOOL_UPDATE_URL` at a local copy of a GitHub `releases/latest` JSON before starting AmqTool.
+To test without touching the internet, set these before starting AmqTool: `AMQTOOL_UPDATE_URL` (a local copy of a GitHub `releases/latest` JSON) for the updater, and `AMQTOOL_LITTERBOX_URL` (a fake `api.php`) for uploads.

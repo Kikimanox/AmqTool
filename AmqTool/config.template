@@ -18,7 +18,8 @@
     "default_out_path": "Default output path",
     "volume_checker_path": "Download location for vol. checking",
     "tmp_path": "Default tmp path",
-    "bgs_path": "Home bg storage path"
+    "bgs_path": "Home bg storage path",
+    "bgs_include_subfolders": false
   },
   "keybindings": {
     "Global Keybinds": [
