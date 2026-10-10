@@ -3282,6 +3282,44 @@ namespace AmqTool
             File.Delete(newtmpFileToCheck);
         }
 
+        /// <summary>The yellow bulb: measure the clip, set the slider to the AMQ volume (see AutoVolume) and show the result</summary>
+        private async void JobsBTN_AutoVolume_Click(object sender, RoutedEventArgs e)
+        {
+            var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+            job.__GetVolumeBTN = false; // this also disables the bulb while it works
+            SetStatusBarText($"Auto volume: measuring '{job.OutFileName}'...", SB.left);
+            var cut = $"{tmpPath}\\_{GetRandomString(20)}_AUTO_VOLUME_TMP_FILE.mp4";
+            try
+            {
+                // the same cut the volume? button measures: start to end with the job's audio track, no re-encode
+                await Task.Run(() => RunCommandAndGetOutput("ffmpeg", temp_mp4_ss_to(ss: job.Timestamps.startTime_SS, to: job.Timestamps.endTime_TO, _in: job.ShowTitleFullPath, aid: (job.UsedAudioId_Warning1Based - 1).ToString(), _out: cut)));
+                var vol = await get_bitrate_and_volume_data_video(cut); // bitrate, max, mean
+                if (!double.TryParse(vol.Item2, NumberStyles.Float, CultureInfo.InvariantCulture, out var max) ||
+                    !double.TryParse(vol.Item3, NumberStyles.Float, CultureInfo.InvariantCulture, out var mean))
+                {
+                    SetStatusBarText("", SB.left);
+                    MessageBox.Show(this, $"Couldn't measure the volume of this clip.\n\n{job.ShowTitleFullPath}", "Auto volume", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var gain = AutoVolume.SuggestGain(max, mean);
+                job.VolumeChangeValue = gain; // moves the slider
+                if (gain == 0)
+                    job.maxVolume_meanVolume = $"({vol.Item2} | {vol.Item3}) dB";
+                else
+                    await UpdateVolumeValuesTextbox(job, cut, deleteTestFiles: false); // measured with the new volume, like the volume? button does
+                UpdateJobsJsonFile();
+
+                var why = AutoVolume.IsPeakLimited(max, mean) ? $" (stopped short of {AutoVolume.TargetMean} dB mean so the max stays at {AutoVolume.MaxPeak} dB or lower)" : "";
+                SetStatusBarText($"Auto volume '{job.OutFileName}': slider {gain:+0.#;-0.#;0} dB, the clip was {max} | {mean} dB (max | mean){why}", SB.left);
+            }
+            finally
+            {
+                if (File.Exists(cut)) File.Delete(cut);
+                job.__GetVolumeBTN = true;
+            }
+        }
+
         public async Task ExecuteVolumeEdit(AmqJob job)
         {
             var v = job.VolumeChangeValue;

@@ -20,7 +20,7 @@ Desktop tool for making AMQ (Anime Music Quiz) uploads: cut OPs/EDs/inserts out 
 ## How to use (tl;dr)
 
 1. **Volume**: check the volume and bitrate of files or links, fix the volume with the slider + orange button, re-upload.
-2. **Get clips**: cut a clean OP/ED/insert out of an episode. Press **F1** / **F2** while it plays to mark the start / end, then fine tune them with the blue (start) and orange (end) one-frame buttons. Add the job, tick 720/480/mp3 and **Start jobs**. Once rendered, the upload button sends it to litterbox; click it again to copy a Discord-ready block with all links (the 7/4/3 buttons copy single links). Forgot the volume? Move the slider and click the orange button after rendering.
+2. **Get clips**: cut a clean OP/ED/insert out of an episode. Press **F1** / **F2** while it plays to mark the start / end, then fine tune them with the blue (start) and orange (end) one-frame buttons. Add the job, click its yellow **bulb** to set the volume for AMQ automatically (it aims for -18 dB mean and keeps the max at -1 dB or lower), tick 720/480/mp3 and **Start jobs**. Once rendered, the upload button sends it to litterbox; click it again to copy a Discord-ready block with all links (the 7/4/3 buttons copy single links). Forgot the volume? Move the slider and click the orange button after rendering.
 3. **Process**: put audio you edited in Vegas onto the video (only needed for audio edits).
 4. **Mkv to Mp4**: convert episodes for Vegas.
 5. **Extract audio**: anything → flac.

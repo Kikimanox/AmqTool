@@ -5,6 +5,7 @@ using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
@@ -21,6 +22,10 @@ namespace AmqTool
             // config.json, jobs.json, the tmp folder and mpv-1.dll are all opened with relative paths,
             // so always run from the exe's folder no matter how we got launched (pinned taskbar icon, updater, cmd...)
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+            // Numbers end up in ffmpeg arguments and file names ("volume=+7.5dB"), so always format them with a dot,
+            // also on PCs set to a comma decimal language (German, Slovenian...)
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             this.Dispatcher.UnhandledException += OnDispatcherUnhandledException;
         }
 

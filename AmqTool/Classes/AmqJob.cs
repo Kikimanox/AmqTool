@@ -421,7 +421,10 @@ namespace AmqTool
         public bool __EditBTN { get => editBTN; set { editBTN = value; Changed(); } }
         public bool __DuplicateJob { get => duplicateJob; set { duplicateJob = value; Changed(); } }
         public bool __CancelBTN { get => cancelBTN; set { cancelBTN = value; Changed(); } }
-        public bool __Rendered720File_EyeBtn { get => rendered720File_EyeBtn; set { rendered720File_EyeBtn = value; Changed(); } }
+        public bool __Rendered720File_EyeBtn { get => rendered720File_EyeBtn; set { rendered720File_EyeBtn = value; Changed(); Changed(nameof(__ShowAutoVolumeBtn)); Changed(nameof(__ShowEyeBtn)); } }
+        // Until a get clips job is rendered its (useless) eye button spot shows the auto volume bulb instead
+        [JsonIgnore] public bool __ShowAutoVolumeBtn => FromState == States.Clips && !__Rendered720File_EyeBtn;
+        [JsonIgnore] public bool __ShowEyeBtn => !__ShowAutoVolumeBtn;
         public bool __GetVolumeBTN { get => getVolumeBTN; set { getVolumeBTN = value; Changed(); } }
         public bool __EditVolumeValueOrangeBTN { get => editVolumeValueOrangeBTN; set { editVolumeValueOrangeBTN = value; Changed(); } }
         public bool __VolumeEditSlider { get => volumeEditSlider; set { volumeEditSlider = value; Changed(); } }

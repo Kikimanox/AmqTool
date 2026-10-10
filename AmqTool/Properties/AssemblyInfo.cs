@@ -51,6 +51,6 @@ using System.Windows;
 // This is THE app version: shown in Help > About, compared against the GitHub release tag (vX.Y.Z)
 // by Help > Check for updates, and used by build\build-release.ps1 to name the release files.
 // Bump all three together before making a release.
-[assembly: AssemblyVersion("0.12.1.0")]
-[assembly: AssemblyFileVersion("0.12.1.0")]
-[assembly: AssemblyInformationalVersion("0.12.1")]
+[assembly: AssemblyVersion("0.13.0.0")]
+[assembly: AssemblyFileVersion("0.13.0.0")]
+[assembly: AssemblyInformationalVersion("0.13.0")]
