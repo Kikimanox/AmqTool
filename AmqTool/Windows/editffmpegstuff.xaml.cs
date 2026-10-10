@@ -53,8 +53,6 @@ namespace AmqTool
                 var res = MessageBox.Show("Are you sure you want to save everything that you have changed?", "Saving?", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (res == MessageBoxResult.Yes)
                 {
-                    // only on save, ticking it and pressing Cancel used to switch 2 pass on anyway
-                    MainWindow.config.conf.WindowProps.Use2PassEnc = _chkbx.IsChecked == true;
                     saveCommands();
                     DialogResult = true;
                 }
@@ -136,5 +134,8 @@ namespace AmqTool
             commands[_AdvCbx.SelectedIndex] = text;
         }
 
+        // On purpose applied right away (no Save needed), it's a quick toggle
+        private void CheckBox_Checked(object sender, RoutedEventArgs e) => MainWindow.config.conf.WindowProps.Use2PassEnc = true;
+        private void CheckBox_Unchecked(object sender, RoutedEventArgs e) => MainWindow.config.conf.WindowProps.Use2PassEnc = false;
     }
 }
