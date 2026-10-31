@@ -1267,6 +1267,39 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="UploadAllJobsBtn" TargetType="Button">
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="FontSize" Value="11px"/>
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="Background" Value="#c9bf9f"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="3" BorderBrush="{DynamicResource BtnPrimaryBorder}" BorderThickness="1">
+                            <TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" TextAlignment="Center" Margin="4 0"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Background" Value="#ccbb87"/>
+                    <Setter Property="Opacity" Value="1"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.6"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="MultiInputBtnJobs" TargetType="Button">
             <Setter Property="UseLayoutRounding" Value="True"/>
             <Setter Property="Height" Value="30"/>

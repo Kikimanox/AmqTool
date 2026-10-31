@@ -1,0 +1,67 @@
+# Builds AmqTool on Windows and publishes a GitHub release (zip for the in-app updater + setup exe).
+#
+# Runs when AmqTool/Properties/AssemblyInfo.cs changes (= the version was bumped) on any branch, or by hand
+# (Actions tab > Release > Run workflow). If a release for that version exists already, nothing happens.
+# The release notes come from build/release-notes.md.
+name: Release
+
+on:
+  push:
+    paths:
+      - 'AmqTool/Properties/AssemblyInfo.cs'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $m = Select-String -Path AmqTool/Properties/AssemblyInfo.cs -Pattern 'AssemblyInformationalVersion\("([^"]+)"\)'
+          $v = $m.Matches[0].Groups[1].Value
+          "version=$v" >> $env:GITHUB_OUTPUT
+          gh release view "v$v" --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) { "exists=true" >> $env:GITHUB_OUTPUT; Write-Host "v$v is released already, nothing to do" }
+          else { "exists=false" >> $env:GITHUB_OUTPUT; Write-Host "Releasing v$v" }
+          exit 0
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Install Inno Setup
+        if: steps.ver.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build
+        if: steps.ver.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File build\build-release.ps1
+          if ($LASTEXITCODE) { throw "build-release.ps1 failed" }
+
+      - name: Publish release
+        if: steps.ver.outputs.exists == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $zip = "dist/AmqTool-v$v.zip"
+          $setup = "dist/AmqTool-Setup-v$v.exe"
+          if (-not (Test-Path $zip)) { throw "$zip is missing (does the version in AssemblyInfo.cs match?)" }
+          if (-not (Test-Path $setup)) { throw "$setup is missing" }
+          gh release create "v$v" $zip $setup --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "AmqTool v$v" --notes-file build/release-notes.md --latest
+          if ($LASTEXITCODE) { throw "gh release create failed" }

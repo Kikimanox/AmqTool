@@ -440,6 +440,8 @@ namespace AmqTool
         public bool __EditVolumeValueOrangeBTN { get => editVolumeValueOrangeBTN; set { editVolumeValueOrangeBTN = value; Changed(); } }
         public bool __VolumeEditSlider { get => volumeEditSlider; set { volumeEditSlider = value; Changed(); } }
         public bool __UploadToCatboxAllBTN { get => uploadToCatboxAllBTN; set { uploadToCatboxAllBTN = value; Changed(); } }
+        // Queued for or in the middle of a litterbox upload (yellow upload button). Not saved: after a restart nothing is uploading
+        [JsonIgnore] public bool __Uploading { get; set; }
 
 
         //// Other properties

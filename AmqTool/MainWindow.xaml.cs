@@ -679,6 +679,7 @@ namespace AmqTool
                 BR_JobsRelated_.Visibility = Visibility.Visible;
                 CLIPS_START_JOBS.Visibility = Visibility.Collapsed;
                 CLEAR_ALL_JOBS.Visibility = Visibility.Visible;
+                UPLOAD_ALL_JOBS.Visibility = Visibility.Collapsed; // volume jobs have their own upload buttons
 
                 MULTI_INPUT_VOLUME.Visibility = Visibility.Visible;
             }
@@ -687,6 +688,7 @@ namespace AmqTool
                 VolumeJobs.Visibility = Visibility.Collapsed;
                 JobsLV.Visibility = Visibility.Visible;
                 CLIPS_START_JOBS.Visibility = Visibility.Visible;
+                UPLOAD_ALL_JOBS.Visibility = isOnConsole ? Visibility.Collapsed : Visibility.Visible;
 
                 MULTI_INPUT_VOLUME.Visibility = Visibility.Collapsed;
             }
@@ -1223,6 +1225,12 @@ namespace AmqTool
                 isProcessing = false; // force stop the jobs loop
                 // MessageBox.Show(Application.Current.MainWindow, "Jobs stopped.", "", MessageBoxButton.OK, MessageBoxImage.Information);
                 // SwitchToMpv(); No need to do this here because it will be done in if (btn.Name == "CLIPS_START_JOBS") anyway
+                return;
+            }
+
+            if (btn.Name == "UPLOAD_ALL_JOBS")
+            {
+                await UploadAllNotUploaded();
                 return;
             }
 
@@ -2366,6 +2374,7 @@ namespace AmqTool
             STOP_JOBS.Visibility = Visibility.Visible;
             CLIPS_START_JOBS.Visibility = Visibility.Collapsed;
             CLEAR_ALL_JOBS.Visibility = Visibility.Collapsed;
+            UPLOAD_ALL_JOBS.Visibility = Visibility.Collapsed;
 
             PROG_BAR_JOBS_GRID.Visibility = Visibility.Visible;
         }
@@ -2390,6 +2399,7 @@ namespace AmqTool
             STOP_JOBS.Visibility = Visibility.Collapsed;
             CLIPS_START_JOBS.Visibility = Visibility.Visible;
             CLEAR_ALL_JOBS.Visibility = Visibility.Visible;
+            UPLOAD_ALL_JOBS.Visibility = state.CurrentState == States.Volume ? Visibility.Collapsed : Visibility.Visible;
 
             PROG_BAR_JOBS_GRID.Visibility = Visibility.Collapsed;
         }
@@ -3413,106 +3423,186 @@ namespace AmqTool
             return linksDropped;
         }
 
-        public bool only_one_upl2 = true; // todo, maybe allow multiple at once :hmmm:
+        // One litterbox upload at a time (single clicks and "Upload all" queue up here)
+        private readonly SemaphoreSlim uploadLock = new SemaphoreSlim(1, 1);
+        private bool uploadAllRunning;
+
         private async void JobsBTN_Upload_Click(object sender, RoutedEventArgs e)
         {
             var btn = sender as Button;
-            var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+            var job = JobsOBS[MyIdxById(MyID(btn))];
 
-            bool isUploaded = btn.Style == Application.Current.Resources["JobsBTN_Uploaded"];
-            if (btn.Style == Application.Current.Resources["JobsBTN_Uploading"])
+            if (job.__Uploading || btn.Style == Application.Current.Resources["JobsBTN_Uploading"])
             {
-                MessageBox.Show(Application.Current.MainWindow, "Don't click me while in this state (yellow/uploading)");
+                MessageBox.Show(this, "Don't click me while in this state (yellow/uploading)");
                 return;
             }
-            if (isUploaded)
+            if (btn.Style == Application.Current.Resources["JobsBTN_Uploaded"])
             {
                 if (await DropExpiredLinks(job, btn)) return;
                 Clipboard.SetText($"**{job.OutFileName}**\n{job.ShowTitle}\n<{job.CatboxLink720}>\n<{job.CatboxLink480}>\n<{job.CatboxLinkMP3}>");
                 return;
             }
 
-            job.__UploadToCatboxAllBTN = false;
+            var error = await UploadJobFilesAsync(job);
+            if (error != null)
+                ShowUploadFailed(error, "Litterbox upload failed");
+        }
 
-            btn.Style = Application.Current.Resources["JobsBTN_Uploading"] as Style;
+        static bool NeedsUploading(string renderedFile, string link) => !string.IsNullOrEmpty(renderedFile) && string.IsNullOrEmpty(link);
 
-            await Task.Run(async () =>
+        /// <summary>A finished job with at least one rendered file (that still exists) without a link, and not being uploaded already</summary>
+        private static bool JobNeedsUpload(AmqJob job) =>
+            !job.__Uploading && job.__UploadToCatboxAllBTN
+            && ((NeedsUploading(job.Rendered720File, job.CatboxLink720) && File.Exists(job.Rendered720File))
+             || (NeedsUploading(job.Rendered480File, job.CatboxLink480) && File.Exists(job.Rendered480File))
+             || (NeedsUploading(job.RenderedMP3File, job.CatboxLinkMP3) && File.Exists(job.RenderedMP3File)));
+
+        /// <summary>Yellow (queued/uploading) or back to whatever the job's links say</summary>
+        private void SetJobUploading(AmqJob job, bool uploading)
+        {
+            job.__Uploading = uploading;
+            job.__UploadToCatboxAllBTN = !uploading;
+            RefreshUploadButton(job);
+        }
+
+        /// <summary>The list is virtualized, so a job scrolled out of view has no button right now (UPLButton_Loaded styles it once it shows up again)</summary>
+        private void RefreshUploadButton(AmqJob job)
+        {
+            var container = JobsLV.ItemContainerGenerator.ContainerFromItem(job) as DependencyObject;
+            var btn = container == null ? null : FindVisualDescendant<Button>(container, b => (b.Tag as string) == "upload");
+            if (btn == null) return;
+
+            string style;
+            if (job.__Uploading) style = "JobsBTN_Uploading";
+            else
             {
-                while (!only_one_upl2)
-                    await Task.Delay(400);
-            });
+                bool allUploaded = (string.IsNullOrEmpty(job.Rendered720File) || !string.IsNullOrEmpty(job.CatboxLink720))
+                    && (string.IsNullOrEmpty(job.Rendered480File) || !string.IsNullOrEmpty(job.CatboxLink480))
+                    && (string.IsNullOrEmpty(job.RenderedMP3File) || !string.IsNullOrEmpty(job.CatboxLinkMP3));
+                bool anyRendered = !string.IsNullOrEmpty(job.Rendered720File) || !string.IsNullOrEmpty(job.Rendered480File) || !string.IsNullOrEmpty(job.RenderedMP3File);
+                style = allUploaded && anyRendered ? "JobsBTN_Uploaded" : "JobsBTN_Upload";
+            }
+            btn.Style = Application.Current.Resources[style] as Style;
+        }
 
-            await Task.Run(async () =>
+        public static T FindVisualDescendant<T>(DependencyObject root, Func<T, bool> match) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
             {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is T found && match(found)) return found;
+                if (FindVisualDescendant(child, match) is T deeper) return deeper;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Uploads every rendered file of the job that has no link yet, one file after the other. Stops at the first
+        /// file that fails. Doesn't show anything itself.
+        /// </summary>
+        /// <returns>null if everything got uploaded, otherwise why it failed (and which file)</returns>
+        private async Task<string> UploadJobFilesAsync(AmqJob job)
+        {
+            SetJobUploading(job, true);
+            try
+            {
+                await uploadLock.WaitAsync();
                 try
                 {
-                    only_one_upl2 = false;
-
-
-                    var upl = new string[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File };
-                    for (int i = 0; i < upl.Length; i++)
+                    var files = new[] { job.Rendered720File, job.Rendered480File, job.RenderedMP3File };
+                    var links = new[] { job.CatboxLink720, job.CatboxLink480, job.CatboxLinkMP3 };
+                    for (int i = 0; i < files.Length; i++)
                     {
-                        if (string.IsNullOrEmpty(upl[i])) continue;
-                        if (i == 0 && job.__CatboxLink720) continue;
-                        if (i == 1 && job.__CatboxLink480) continue;
-                        if (i == 2 && job.__CatboxLinkMP3) continue;
-                        await Task.Delay(300);
+                        if (!NeedsUploading(files[i], links[i])) continue;
+                        if (!File.Exists(files[i])) return $"This file does not exist anymore:\n{files[i]}";
 
-                        var (ok, text) = await Litterbox.UploadAsync(upl[i]);
-                        if (ok)
-                        {
-                            if (i == 0) { job.CatboxLink720 = text; job.__CatboxLink720 = true; }
-                            if (i == 1) { job.CatboxLink480 = text; job.__CatboxLink480 = true; }
-                            if (i == 2) { job.CatboxLinkMP3 = text; job.__CatboxLinkMP3 = true; }
-                            Dispatcher.Invoke(() => UpdateJobsJsonFile());
-                        }
-                        else
-                        {
-                            var file = upl[i];
-                            Dispatcher.Invoke(() => MessageBox.Show(Application.Current.MainWindow, $"{text}\n\nFailed to upload: {file}", "Litterbox upload failed", MessageBoxButton.OK, MessageBoxImage.Error));
-                            job.__UploadToCatboxAllBTN = true;
-                        }
+                        var (ok, text) = await Litterbox.UploadAsync(files[i]);
+                        if (!ok) return $"{text}\n\nFailed to upload: {files[i]}";
+
+                        if (i == 0) { job.CatboxLink720 = text; job.__CatboxLink720 = true; }
+                        if (i == 1) { job.CatboxLink480 = text; job.__CatboxLink480 = true; }
+                        if (i == 2) { job.CatboxLinkMP3 = text; job.__CatboxLinkMP3 = true; }
+                        UpdateJobsJsonFile();
                     }
-                }
-                catch (Exception ex)
-                {
-                    string extra = "";
-                    if (ex.Message == "A task was canceled.") extra = "\n\nTimeout has occurred (10 minutes)";
-                    // we're on a worker thread here, MainWindow may only be touched from the UI thread
-                    Dispatcher.Invoke(() => MessageBox.Show(Application.Current.MainWindow, $"{ex.Message}\n{ex.InnerException}{extra}", "Something went wrong when uploading to Litterbox", MessageBoxButton.OK, MessageBoxImage.Error));
-                    job.__UploadToCatboxAllBTN = true; // no automatic retry below, clicking upload again works
+                    return null;
                 }
                 finally
                 {
-                    only_one_upl2 = true;
-                    Dispatcher.Invoke(() => UpdateJobsJsonFile());
-                    Dispatcher.Invoke(() => { btn.Style = Application.Current.Resources["JobsBTN_Upload"] as Style; });
+                    uploadLock.Release();
                 }
-            });
-
-
-            // TODO: Put something like this recheck jobs
-            bool tryAgain = false;
-            // if the button is disabled (aka. no link)
-            // and the rendered file is not empty
-            // and the upload didn't fail becasue on an exception/catbox
-            if (!job.__CatboxLink720 && !string.IsNullOrEmpty(job.Rendered720File) && !job.__UploadToCatboxAllBTN) tryAgain = true;
-            if (!job.__CatboxLink480 && !string.IsNullOrEmpty(job.Rendered480File) && !job.__UploadToCatboxAllBTN) tryAgain = true;
-            if (!job.__CatboxLinkMP3 && !string.IsNullOrEmpty(job.RenderedMP3File) && !job.__UploadToCatboxAllBTN) tryAgain = true;
-            if (tryAgain)
+            }
+            catch (Exception ex)
             {
-                // this is in case the race condition fails for the locker
-                job.__UploadToCatboxAllBTN = true;
-                (sender as Button).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                return $"Something went wrong when uploading to litterbox: {ex.Message}";
+            }
+            finally
+            {
+                SetJobUploading(job, false);
+                UpdateJobsJsonFile();
+            }
+        }
+
+        private void ShowUploadFailed(string reason, string title)
+        {
+            SetStatusBarText($"{title}: {reason.Split('\n')[0]}", SB.left);
+            // make sure the box can't end up hidden behind another window
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+            MessageBox.Show(this, reason, title, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        /// <summary>
+        /// "Upload all (not uploaded) to litterbox": every finished job that isn't (fully) uploaded yet, one after the other.
+        /// Jobs that are uploaded already or being uploaded are skipped. The first failure stops the rest (litterbox is
+        /// most likely down then, no point in trying every job) and pops up why.
+        /// </summary>
+        private async Task UploadAllNotUploaded()
+        {
+            if (uploadAllRunning)
+            {
+                MessageBox.Show(this, "Already uploading everything, wait until it's done.", "Upload all", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // only look "uploaded" if every rendered file got a link (a failed upload used to turn the button green too)
-            bool allUploaded = (string.IsNullOrEmpty(job.Rendered720File) || job.__CatboxLink720)
-                && (string.IsNullOrEmpty(job.Rendered480File) || job.__CatboxLink480)
-                && (string.IsNullOrEmpty(job.RenderedMP3File) || job.__CatboxLinkMP3);
-            btn.Style = Application.Current.Resources[allUploaded ? "JobsBTN_Uploaded" : "JobsBTN_Upload"] as Style;
-            job.__UploadToCatboxAllBTN = true;
-            Dispatcher.Invoke(() => UpdateJobsJsonFile());
+            var todo = JobsOBS.Where(JobNeedsUpload).ToList();
+            if (todo.Count == 0)
+            {
+                MessageBox.Show(this, "Nothing to upload: every rendered job is uploaded already (or being uploaded right now).", "Upload all", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            uploadAllRunning = true;
+            var originalContent = UPLOAD_ALL_JOBS.Content;
+            UPLOAD_ALL_JOBS.IsEnabled = false;
+            foreach (var j in todo) SetJobUploading(j, true); // all of them go yellow right away, like clicking each upload button
+            int uploaded = 0;
+            try
+            {
+                for (int k = 0; k < todo.Count; k++)
+                {
+                    var job = todo[k];
+                    UPLOAD_ALL_JOBS.Content = $"Uploading {k + 1}/{todo.Count}...";
+                    if (!JobsOBS.Contains(job)) { job.__Uploading = false; continue; } // removed from the list meanwhile
+
+                    var error = await UploadJobFilesAsync(job);
+                    if (error != null)
+                    {
+                        // don't try the rest, their buttons go back to normal
+                        for (int r = k + 1; r < todo.Count; r++) SetJobUploading(todo[r], false);
+                        string done = uploaded == 0 ? "Nothing was uploaded" : $"{uploaded} of {todo.Count} jobs were uploaded";
+                        ShowUploadFailed($"Upload all stopped at \"{job.OutFileName}\". {done}, the other {todo.Count - k - 1} job(s) were not tried.\n\n{error}", "Litterbox upload failed");
+                        return;
+                    }
+                    uploaded++;
+                }
+                SetStatusBarText($"Uploaded {uploaded} job(s) to litterbox. Click a job's upload button to copy its links.", SB.left);
+            }
+            finally
+            {
+                UPLOAD_ALL_JOBS.Content = originalContent;
+                UPLOAD_ALL_JOBS.IsEnabled = true;
+                uploadAllRunning = false;
+            }
         }
 
         private async void JobsBTN_VolumeEdit_Click(object sender, MouseButtonEventArgs e)
@@ -3609,6 +3699,12 @@ namespace AmqTool
         {
             var btn = sender as Button;
             var job = JobsOBS[MyIdxById(MyID(sender as Button))];
+            if (job.__Uploading)
+            {
+                // scrolled back into view while queued/uploading
+                btn.Style = Application.Current.Resources["JobsBTN_Uploading"] as Style;
+                return;
+            }
             if (!job.JobFinished) return;
 
             var a = new List<bool>() { !string.IsNullOrEmpty(job.Rendered720File), !string.IsNullOrEmpty(job.CatboxLink720), job.__CatboxLink720 };

@@ -302,6 +302,8 @@
                         <Button x:Name="CLIPS_START_JOBS" Style="{StaticResource StartJobsButton}" Content="Start jobs" Margin="0 10 0 0" Click="MPV_Btn_Click" Visibility="Collapsed"/>
                         <Button x:Name="STOP_JOBS" Style="{StaticResource StopJobsButton}" Visibility="Collapsed" Content="Stop jobs" Margin="0 10 0 0" Click="MPV_Btn_Click"/>
                         <Button x:Name="CLEAR_ALL_JOBS" Style="{StaticResource ClearAllJobsBtn}" Content="Clear jobs list" Margin="0 2 0 0" Click="MPV_Btn_Click" Visibility="Visible"/>
+                        <Button x:Name="UPLOAD_ALL_JOBS" Style="{StaticResource UploadAllJobsBtn}" Content="Upload all (not uploaded) to litterbox" Margin="0 2 0 0" Click="MPV_Btn_Click" Visibility="Visible"
+                                ToolTip="Upload all (not uploaded) jobs to litterbox, one after the other. Jobs that are uploaded already or are uploading right now are skipped. If one upload fails (e.g. litterbox is down) the rest is not tried and a popup tells you why."/>
                         <Button x:Name="MULTI_INPUT_VOLUME" Style="{StaticResource MultiInputBtnJobs}" Content="Multi input" Margin="0 2 0 0" Click="MPV_Btn_Click" Visibility="Visible"/>
                         <Grid x:Name="PROG_BAR_JOBS_GRID" Visibility="Collapsed" Margin="0 2 0 0">
                             <ProgressBar Value="{Binding ProgBar_Jobs_Val}" Style="{StaticResource ProgBarJobs}" Name="PROG_BAR_JOBS"/>
