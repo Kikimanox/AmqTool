@@ -99,6 +99,7 @@
     </ApplicationDefinition>
     <Compile Include="Classes\AmqJob.cs" />
     <Compile Include="Classes\AutoVolume.cs" />
+    <Compile Include="Classes\CopyFeedback.cs" />
     <Compile Include="Classes\Litterbox.cs" />
     <Compile Include="Classes\MyLocker.cs" />
     <Compile Include="Classes\OldInstallImport.cs" />

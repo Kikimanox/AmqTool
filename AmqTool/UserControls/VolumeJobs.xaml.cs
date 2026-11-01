@@ -518,7 +518,7 @@ namespace AmqTool.UserControls
                     MessageBox.Show("The litterbox link has expired (litterbox deletes uploads after 72 hours), so it was removed.\n\nUse the upload button to upload it again.", "Link expired", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
-                Clipboard.SetText(job.CatboxLinkNEW);
+                CopyFeedback.Copy(job.CatboxLinkNEW, btn, "link");
                 return;
             }
 

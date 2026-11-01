@@ -991,7 +991,7 @@ namespace AmqTool
                 }
             }
             if (btn.Name == "CopyProcessVideoPath")
-                Clipboard.SetText(I_Know_the_process_input_file_name.Text);
+                CopyFeedback.Copy(I_Know_the_process_input_file_name.Text, btn, "path");
             if (btn.Name == "ProcessClearCbx")
                 I_Know_the_process_input_file_name.Text = "I know the video file path (priority over player)";
             if (btn.Name == "PreviewIKnowPathBTN")
@@ -3157,19 +3157,19 @@ namespace AmqTool
         {
             var job = JobsOBS[MyIdxById(MyID(sender as Button))];
             if (await DropExpiredLinks(job, sender as Button, "720")) return;
-            Clipboard.SetText(job.CatboxLink720);
+            CopyFeedback.Copy(job.CatboxLink720, sender as Button, "720 link");
         }
         private async void JobsBTN_CopyUploaded4_Click(object sender, RoutedEventArgs e)
         {
             var job = JobsOBS[MyIdxById(MyID(sender as Button))];
             if (await DropExpiredLinks(job, sender as Button, "480")) return;
-            Clipboard.SetText(job.CatboxLink480);
+            CopyFeedback.Copy(job.CatboxLink480, sender as Button, "480 link");
         }
         private async void JobsBTN_CopyUploaded3_Click(object sender, RoutedEventArgs e)
         {
             var job = JobsOBS[MyIdxById(MyID(sender as Button))];
             if (await DropExpiredLinks(job, sender as Button, "mp3")) return;
-            Clipboard.SetText(job.CatboxLinkMP3);
+            CopyFeedback.Copy(job.CatboxLinkMP3, sender as Button, "mp3 link");
         }
 
         /// <summary>
@@ -3440,7 +3440,7 @@ namespace AmqTool
             if (btn.Style == Application.Current.Resources["JobsBTN_Uploaded"])
             {
                 if (await DropExpiredLinks(job, btn)) return;
-                Clipboard.SetText($"**{job.OutFileName}**\n{job.ShowTitle}\n<{job.CatboxLink720}>\n<{job.CatboxLink480}>\n<{job.CatboxLinkMP3}>");
+                CopyFeedback.Copy($"**{job.OutFileName}**\n{job.ShowTitle}\n<{job.CatboxLink720}>\n<{job.CatboxLink480}>\n<{job.CatboxLinkMP3}>", btn, "all links");
                 return;
             }
 
